@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#f6f7fb" />
+    <meta name="theme-color" content="#121620" />
     <title>栖点 · 我的书签</title>
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <script src="./theme-init.js"></script>
@@ -13,39 +13,50 @@
   </head>
   <body>
     <a class="skip-link" href="#content">跳到书签内容</a>
-    <div class="backdrop" aria-hidden="true"><div class="backdrop-glow"></div></div>
+    
+    <!-- Fullscreen Immersive Ambient Backdrop -->
+    <div class="backdrop" aria-hidden="true">
+      <div class="backdrop-glow"></div>
+      <div class="backdrop-ambient"></div>
+    </div>
+
     <main class="app-window">
+      <!-- Immersive Unified Top Header -->
       <header class="titlebar">
         <div class="titlebar-left">
           <h1 class="brand" aria-label="栖点">
             <span class="brand-mark">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5h10a1 1 0 0 1 1 1v14.2l-6-3.6-6 3.6V5.5a1 1 0 0 1 1-1Z" fill="currentColor"/></svg>
             </span>
-            <span>栖点</span>
+            <span class="brand-name">栖点</span>
           </h1>
-          <span class="header-count" id="countLine">把常用网站放在触手可及的地方</span>
+          <span class="private-badge" id="syncBadge">
+            <span class="badge-dot"></span>
+            <span id="syncBadgeText">本地</span>
+          </span>
         </div>
 
+        <!-- Centered Hero Search Bar -->
         <div class="search-wrap">
           <label class="search-box" for="searchInput">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg>
-            <input id="searchInput" type="search" placeholder="搜索名称、网址、拼音首字母..." aria-label="搜索书签" autocomplete="off" />
+            <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4.5 4.5"/></svg>
+            <input id="searchInput" type="search" placeholder="搜索书签、网址或拼音首字母..." aria-label="搜索书签" autocomplete="off" />
             <button class="search-clear" id="searchClearBtn" type="button" aria-label="清空搜索" hidden title="清空搜索">×</button>
             <kbd title="按 / 键快速聚焦">/</kbd>
           </label>
         </div>
 
+        <!-- Clean Header Actions -->
         <div class="titlebar-right">
-          <span class="private-badge" id="syncBadge"><span></span><span id="syncBadgeText">本地保存</span></span>
-
           <button class="button button-primary quick-add-btn" id="quickAddButton" type="button" title="添加新书签">
-            <span class="plus">+</span> 添加书签
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+            <span>添加</span>
           </button>
 
           <!-- View Mode Toggle -->
           <div class="view-toggle" role="group" aria-label="视图模式">
             <button type="button" id="viewGridBtn" class="icon-toggle is-active" title="网格卡片视图" aria-label="网格卡片视图">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></svg>
             </button>
             <button type="button" id="viewListBtn" class="icon-toggle" title="紧凑列表视图" aria-label="紧凑列表视图">
               <svg viewBox="0 0 24 24" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="4" cy="6" r="1.5" fill="currentColor"/><circle cx="4" cy="12" r="1.5" fill="currentColor"/><circle cx="4" cy="18" r="1.5" fill="currentColor"/></svg>
@@ -69,15 +80,15 @@
 
           <!-- Actions Dropdown -->
           <div class="actions-wrap">
-            <button class="button button-quiet" id="actionsButton" type="button" aria-expanded="false" aria-controls="actionsMenu">
-              操作 <span class="chevron">⌄</span>
+            <button class="icon-button header-icon-btn" id="actionsButton" type="button" aria-expanded="false" aria-controls="actionsMenu" title="更多操作">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="1.8" fill="currentColor"/><circle cx="19" cy="12" r="1.8" fill="currentColor"/><circle cx="5" cy="12" r="1.8" fill="currentColor"/></svg>
             </button>
             <div class="actions-menu" id="actionsMenu" hidden>
               <button id="addButton" type="button">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg> 添加书签
               </button>
               <button id="importButton" type="button">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0-4-4m4 4 4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg> 导入本地书签
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0-4-4m4 4 4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg> 导入书签
               </button>
               <button id="exportButton" type="button" aria-expanded="false" aria-controls="exportMenu">
                 <span class="menu-item-content">
@@ -106,7 +117,7 @@
             </div>
           </div>
 
-          <button class="theme-toggle" id="appearanceButton" type="button" aria-label="背景设置" title="背景设置">
+          <button class="theme-toggle" id="appearanceButton" type="button" aria-label="壁纸与背景设置" title="壁纸与背景设置">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16M6 16l3-8 4 5 3-3 3 6H6Z"/><circle cx="17" cy="6" r="2"/></svg>
           </button>
           <button class="theme-toggle" id="themeToggle" type="button" aria-label="切换暗黑模式" title="切换暗黑模式">
@@ -116,27 +127,31 @@
         </div>
       </header>
 
-      <div class="tabs-bar">
-        <nav class="tabs" id="tabs" aria-label="书签分类"></nav>
-        <div class="search-hint-bar" id="searchHintBar" hidden>
-          <span id="searchResultNote"></span>
-          <button type="button" id="clearSearchScopeBtn" class="tag-button">清空搜索</button>
-        </div>
+      <!-- Minimalist Category Navigation -->
+      <nav class="tabs" id="tabs" aria-label="书签分类"></nav>
+
+      <!-- Active Search Status Bar -->
+      <div class="search-hint-bar" id="searchHintBar" hidden>
+        <span id="searchResultNote"></span>
+        <button type="button" id="clearSearchScopeBtn" class="tag-button">清空搜索</button>
       </div>
 
       <input id="fileInput" type="file" accept=".html,.htm,.json,text/html,application/json" hidden />
 
+      <!-- Demo State Banner -->
       <div class="demo-banner" id="demoBanner" hidden>
         <span class="demo-sparkle">✦</span>
         <span>这里展示的是示例书签。导入你的浏览器书签开始专属体验。</span>
         <button id="demoImportButton" type="button">导入我的书签 <span aria-hidden="true">→</span></button>
       </div>
 
+      <!-- Main Bookmarks Content -->
       <section class="content" id="content" aria-live="polite"></section>
 
+      <!-- Minimal Footer -->
       <footer class="app-footer">
         <div class="footer-left">
-          <span>栖点 · 给书签一个清爽、安静的家</span>
+          <span class="brand-subtext" id="countLine">栖点 · 给书签一个清爽、安静的家</span>
           <button type="button" class="footer-link" id="footerShortcutsLink">快捷键 (?)</button>
         </div>
         <span id="footerCount">0 个书签</span>
@@ -151,7 +166,6 @@
           <button class="icon-button" id="closeDialogButton" type="button" aria-label="关闭">×</button>
         </div>
 
-        <!-- Destination Selector in Extension Mode -->
         <div class="field" id="targetDestinationWrap" hidden>
           <span>保存位置</span>
           <div class="segmented-control" id="saveDestinationToggle">
@@ -170,13 +184,11 @@
           <input id="urlField" name="url" required type="text" inputmode="url" placeholder="https://example.com" autocomplete="off" />
         </label>
 
-        <!-- Chrome Folder Select when saving to or editing Chrome -->
         <div class="field" id="chromeFolderSelectWrap" hidden>
           <span>Chrome 目标文件夹</span>
           <select id="chromeFolderSelect"></select>
         </div>
 
-        <!-- Category & Group fields for Local bookmarks -->
         <div class="field-grid" id="localOrganizeFields">
           <label class="field">
             <span>分类</span>
@@ -290,13 +302,13 @@
       </div>
     </dialog>
 
-    <!-- Appearance Dialog -->
+    <!-- Appearance Settings Dialog -->
     <dialog id="appearanceDialog" class="bookmark-dialog appearance-dialog" aria-labelledby="appearanceTitle">
       <div class="dialog-heading">
-        <div><p class="eyebrow">APPEARANCE</p><h2 id="appearanceTitle">背景与视觉设置</h2></div>
+        <div><p class="eyebrow">ATMOSPHERE</p><h2 id="appearanceTitle">沉浸氛围与背景</h2></div>
         <button class="icon-button" type="button" data-close-dialog="appearanceDialog" aria-label="关闭">×</button>
       </div>
-      <label class="field-label">预设背景色与渐变</label>
+      <label class="field-label">精选沉浸式主题</label>
       <div class="preset-grid" id="presetGrid"></div>
       <label class="field">
         <span>上传自定义壁纸</span>
