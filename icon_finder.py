@@ -66,7 +66,7 @@ def _fetch(url: str, limit: int) -> tuple[bytes, str] | None:
         return None
     request = Request(url, headers={
         "User-Agent": "Mozilla/5.0 (compatible; QidianBookmarkGallery/2.0)",
-        "Accept": "image/avif,image/webp,image/png,image/jpeg,image/gif,image/x-icon,text/html;q=0.7,*/*;q=0.4",
+        "Accept": "image/avif,image/webp,image/png,image/svg+xml,image/jpeg,image/gif,image/x-icon,text/html;q=0.7,*/*;q=0.4",
     })
     try:
         with _opener.open(request, timeout=3.5) as response:
@@ -103,10 +103,15 @@ class _IconLinks(HTMLParser):
                 continue
         if "apple-touch-icon" in rel:
             declared = max(declared, 180)
+        elif "svg" in attrs.get("type", "").lower() or href.lower().endswith(".svg"):
+            declared = max(declared, 256)
         self.links.append((href, declared))
 
 
 def _image_details(data: bytes) -> tuple[str, int] | None:
+    stripped = data.lstrip()
+    if stripped.startswith(b"<svg") or (b"<svg" in stripped[:500].lower() and b"</svg>" in data[-500:].lower()):
+        return "image/svg+xml", 256
     if data.startswith(b"\x89PNG\r\n\x1a\n") and len(data) >= 24:
         width, height = struct.unpack(">II", data[16:24])
         return "image/png", min(width, height)
