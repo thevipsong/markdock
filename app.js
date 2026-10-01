@@ -15,7 +15,6 @@
     banner: $("#demoBanner"), search: $("#searchInput"), searchClear: $("#searchClearBtn"),
     searchHintBar: $("#searchHintBar"), searchResultNote: $("#searchResultNote"), clearSearchScopeBtn: $("#clearSearchScopeBtn"),
     file: $("#fileInput"), quickAdd: $("#quickAddButton"),
-    viewGrid: $("#viewGridBtn"), viewList: $("#viewListBtn"),
     sortBtn: $("#sortButton"), sortMenu: $("#sortMenu"), sortLabel: $("#sortLabel"),
     collapseAllBtn: $("#collapseAllButton"), collapseAllLabel: $("#collapseAllLabel"),
     actionsButton: $("#actionsButton"), actionsMenu: $("#actionsMenu"),
@@ -432,11 +431,6 @@
     }
     refs.footerCount.textContent = `${state.items.length} 个书签`;
 
-    // View mode class
-    refs.content.classList.toggle("is-list-view", state.viewMode === "list");
-    refs.viewGrid.classList.toggle("is-active", state.viewMode === "grid");
-    refs.viewList.classList.toggle("is-active", state.viewMode === "list");
-
     // Sort button label
     const sortLabels = { default: "默认", name: "按名称", recent: "最近添加", domain: "按域名" };
     refs.sortLabel.textContent = sortLabels[state.sortMode] || "默认";
@@ -500,7 +494,7 @@
     const toggleBtn = document.createElement("button");
     toggleBtn.type = "button";
     toggleBtn.className = "section-toggle-btn";
-    toggleBtn.setAttribute("aria-label", isCollapsed ? "展开分组" : "折叠分组");
+    toggleBtn.setAttribute("aria-label", isCollapsed ? "展开文件夹" : "折叠文件夹");
     toggleBtn.innerHTML = `<svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>`;
     toggleBtn.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -519,7 +513,7 @@
 
     const note = document.createElement("span");
     note.className = "section-note";
-    note.textContent = `${section.items.length} 个`;
+    note.textContent = `${section.items.length}`;
 
     const divider = document.createElement("div");
     divider.className = "section-divider";
@@ -527,11 +521,11 @@
     const actions = document.createElement("div");
     actions.className = "section-actions";
 
-    // Rename group action button
+    // Rename folder action button
     const renameBtn = document.createElement("button");
     renameBtn.type = "button";
     renameBtn.className = "section-action-btn";
-    renameBtn.title = "重命名此分组";
+    renameBtn.title = "重命名此文件夹";
     renameBtn.textContent = "重命名";
     renameBtn.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -542,11 +536,11 @@
     const openAll = document.createElement("button");
     openAll.type = "button";
     openAll.className = "section-action-btn";
-    openAll.title = `在新标签页打开本组 ${section.items.length} 个书签`;
-    openAll.textContent = "打开本组全部";
+    openAll.title = `在新标签页打开本文件夹 ${section.items.length} 个书签`;
+    openAll.textContent = "打开全部";
     openAll.addEventListener("click", async (e) => {
       e.stopPropagation();
-      if (section.items.length > 12 && !confirm(`将在新标签页打开本组 ${section.items.length} 个书签，继续吗？`)) return;
+      if (section.items.length > 12 && !confirm(`将在新标签页打开本文件夹 ${section.items.length} 个书签，继续吗？`)) return;
       let opened = 0;
       for (const item of section.items) {
         try {
@@ -563,15 +557,15 @@
 
     header.addEventListener("click", () => toggleSectionCollapse(section.key));
 
-    const grid = document.createElement("div");
-    grid.className = "bookmark-grid";
+    const list = document.createElement("div");
+    list.className = "bookmark-list";
     const queryTokens = state.query.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
 
     for (const item of section.items) {
-      grid.append(buildBookmark(item, queryTokens));
+      list.append(buildBookmark(item, queryTokens));
     }
 
-    element.append(header, grid);
+    element.append(header, list);
     return element;
   }
 
@@ -594,7 +588,7 @@
       else state.collapsedSections.add(key);
       el.classList.toggle("is-collapsed", !allCollapsed);
     }
-    refs.collapseAllLabel.textContent = allCollapsed ? "折叠所有分组" : "展开所有分组";
+    refs.collapseAllLabel.textContent = allCollapsed ? "折叠所有文件夹" : "展开所有文件夹";
     saveViewPreferences();
   }
 
@@ -619,71 +613,32 @@
     link.addEventListener("focus", () => showBookmarkTooltip(item, link));
     link.addEventListener("blur", hideBookmarkTooltip);
 
-    // Icon container
-    const icon = document.createElement("span");
-    icon.className = "bookmark-icon";
-    const [background, foreground] = fallbackColors(item.title);
-    icon.style.setProperty("--icon-bg", background);
-    icon.style.setProperty("--icon-fg", foreground);
+    const dot = document.createElement("span");
+    dot.className = "bookmark-dot";
+    dot.setAttribute("aria-hidden", "true");
 
-    const initial = document.createElement("span");
-    initial.className = "bookmark-initial";
-    initial.textContent = [...item.title][0] || "◆";
-    icon.append(initial);
-
-    const sources = iconSources(item);
-    if (sources.length) {
-      const img = document.createElement("img");
-      img.alt = "";
-      img.loading = "lazy";
-      img.referrerPolicy = "no-referrer";
-      let sourceIndex = 0;
-      img.addEventListener("load", () => {
-        if (img.naturalWidth > 1 && img.naturalHeight > 1) {
-          icon.classList.add("has-img");
-        } else if (sourceIndex + 1 < sources.length) {
-          sourceIndex++;
-          img.src = sources[sourceIndex];
-        }
-      });
-      img.addEventListener("error", () => {
-        sourceIndex++;
-        if (sourceIndex < sources.length) {
-          img.src = sources[sourceIndex];
-        } else {
-          img.remove();
-          icon.classList.remove("has-img");
-        }
-      });
-      icon.append(img);
-      img.src = sources[sourceIndex];
-    }
-
-    // Text info
-    const info = document.createElement("div");
-    info.className = "bookmark-info";
-
-    const titleWrap = document.createElement("div");
-    titleWrap.className = "bookmark-title-wrap";
+    const main = document.createElement("span");
+    main.className = "bookmark-main";
 
     const title = document.createElement("span");
     title.className = "bookmark-title";
     title.innerHTML = highlightMatch(item.title, queryTokens);
+    main.append(title);
 
-    const source = document.createElement("span");
-    source.className = "bookmark-source";
-    source.textContent = item.source === "chrome" ? "Chrome" : "本地";
-
-    titleWrap.append(title, source);
+    if (item.source === "chrome") {
+      const source = document.createElement("span");
+      source.className = "bookmark-source";
+      source.textContent = "Chrome";
+      main.append(source);
+    }
 
     const domain = document.createElement("span");
     domain.className = "bookmark-domain";
     domain.innerHTML = highlightMatch(hostOf(item.url) || item.url, queryTokens);
 
-    info.append(titleWrap, domain);
-    link.append(icon, info);
+    link.append(dot, main, domain);
 
-    // Card Actions
+    // Row Actions
     const actions = document.createElement("span");
     actions.className = `bookmark-actions${item.favorite ? " favorite-always" : ""}`;
 
@@ -1695,18 +1650,6 @@
     if (!btn) return;
     state.targetDest = btn.dataset.dest;
     updateSaveDestToggle();
-  });
-
-  // View mode switcher
-  refs.viewGrid.addEventListener("click", () => {
-    state.viewMode = "grid";
-    saveViewPreferences();
-    render();
-  });
-  refs.viewList.addEventListener("click", () => {
-    state.viewMode = "list";
-    saveViewPreferences();
-    render();
   });
 
   // Sort dropdown
