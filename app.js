@@ -201,9 +201,14 @@
 
   function fallbackColors(title) {
     const palette = [
-      ["#eeeaff", "#5842af"], ["#e4f6ed", "#2d815e"], ["#ffede4", "#b86334"],
-      ["#e7efff", "#3a6bc0"], ["#ffeaf0", "#ad4365"], ["#e8edf2", "#4f6778"],
-      ["#fef3d6", "#a16812"], ["#e3f6f5", "#1c7873"]
+      ["linear-gradient(135deg, #6366f1, #4338ca)", "#ffffff"],
+      ["linear-gradient(135deg, #06b6d4, #0891b2)", "#ffffff"],
+      ["linear-gradient(135deg, #10b981, #059669)", "#ffffff"],
+      ["linear-gradient(135deg, #f59e0b, #d97706)", "#ffffff"],
+      ["linear-gradient(135deg, #ec4899, #be185d)", "#ffffff"],
+      ["linear-gradient(135deg, #8b5cf6, #6d28d9)", "#ffffff"],
+      ["linear-gradient(135deg, #64748b, #334155)", "#ffffff"],
+      ["linear-gradient(135deg, #0ea5e9, #0284c7)", "#ffffff"]
     ];
     let number = 0;
     for (const char of title) number = (number * 31 + char.charCodeAt(0)) >>> 0;
@@ -215,16 +220,42 @@
     try {
       const url = new URL(item.url);
       if (["http:", "https:"].includes(url.protocol)) {
-        if (EXTENSION_MODE) {
-          const chromeIcon = new URL(chrome.runtime.getURL("/_favicon/"));
-          chromeIcon.searchParams.set("pageUrl", item.url);
-          chromeIcon.searchParams.set("size", "64");
-          sources.push(chromeIcon.href);
-        } else {
+        const origin = url.origin;
+        const host = url.hostname;
+
+        // 1. Direct Apple Touch Icon (180x180 retina PNG from website origin)
+        sources.push(`${origin}/apple-touch-icon.png`);
+        sources.push(`${origin}/apple-touch-icon-precomposed.png`);
+
+        // 2. Google High-Definition Favicon V2 (128x128 crisp retina from Google CDN)
+        sources.push(`https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${encodeURIComponent(origin)}&size=128`);
+
+        // 3. Local python server icon cache (if running local serve.py)
+        if (!EXTENSION_MODE) {
           sources.push(`/api/icon?url=${encodeURIComponent(item.url)}`);
         }
+
+        // 4. Chrome's built-in 128px icon (if running as extension)
+        if (EXTENSION_MODE && chrome?.runtime?.getURL) {
+          try {
+            const chromeIcon = new URL(chrome.runtime.getURL("/_favicon/"));
+            chromeIcon.searchParams.set("pageUrl", item.url);
+            chromeIcon.searchParams.set("size", "128");
+            sources.push(chromeIcon.href);
+          } catch { /* ignore */ }
+        }
+
+        // 5. DuckDuckGo Icon API
+        sources.push(`https://icons.duckduckgo.com/ip3/${host}.ico`);
+
+        // 6. Direct SVG favicon
+        sources.push(`${origin}/favicon.svg`);
+
+        // 7. Base64 icon if available
         if (item.icon) sources.push(item.icon);
-        sources.push(`${url.origin}/favicon.ico`);
+
+        // 8. Traditional favicon.ico
+        sources.push(`${origin}/favicon.ico`);
       } else if (item.icon) {
         sources.push(item.icon);
       }
@@ -608,7 +639,12 @@
       img.referrerPolicy = "no-referrer";
       let sourceIndex = 0;
       img.addEventListener("load", () => {
-        icon.classList.add("has-img");
+        if (img.naturalWidth > 1 && img.naturalHeight > 1) {
+          icon.classList.add("has-img");
+        } else if (sourceIndex + 1 < sources.length) {
+          sourceIndex++;
+          img.src = sources[sourceIndex];
+        }
       });
       img.addEventListener("error", () => {
         sourceIndex++;

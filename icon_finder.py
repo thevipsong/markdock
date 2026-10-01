@@ -160,7 +160,10 @@ def _discover(origin: str) -> tuple[bytes, str] | None:
             candidates.append((urljoin(origin + "/", href), declared))
     candidates.extend([
         (origin + "/apple-touch-icon.png", 180),
+        (origin + "/apple-touch-icon-precomposed.png", 180),
+        (origin + "/favicon.svg", 256),
         (origin + "/favicon-192x192.png", 192),
+        (f"https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url={origin}&size=128", 128),
         (origin + "/favicon.ico", 32),
     ])
     candidates.sort(key=lambda entry: entry[1], reverse=True)

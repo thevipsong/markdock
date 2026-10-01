@@ -2,15 +2,15 @@
   "use strict";
   const STORAGE_KEY = "qidian-appearance-v1";
   const presets = [
-    ["dusk", "暮山", "linear-gradient(135deg,#6e899a,#142944)"],
-    ["aurora", "极光", "linear-gradient(135deg,#1a425d,#9880b9,#263d40)"],
-    ["sunset", "晚霞", "linear-gradient(135deg,#844c82,#e06d53)"],
-    ["forest", "苍翠", "linear-gradient(135deg,#1d433b,#437055)"],
-    ["ocean", "碧海", "linear-gradient(135deg,#1c3b57,#2d6b7b)"],
-    ["slate", "石板", "#263646"],
-    ["plum", "梅紫", "#433248"],
-    ["obsidian", "曜黑", "linear-gradient(135deg,#1e222d,#0d1117)"],
-    ["image", "我的图片", "linear-gradient(135deg,#4b5b71,#8796a2)"]
+    ["dusk", "暮山晨雾", "linear-gradient(145deg, #41556b, #192738)"],
+    ["obsidian", "极简纯黑", "linear-gradient(145deg, #121620, #080a0e)"],
+    ["ivory", "晨曦月白", "linear-gradient(145deg, #eef2f7, #dce3ed)"],
+    ["aurora", "北欧极光", "linear-gradient(135deg, #15394f, #4d3e75 55%, #1c3439)"],
+    ["sunset", "落日熔金", "linear-gradient(135deg, #482343, #782f4d 50%, #ba5845)"],
+    ["ocean", "碧海幽境", "linear-gradient(135deg, #0e273c, #164058 55%, #184852)"],
+    ["pine", "松烟苍黛", "linear-gradient(135deg, #132e29, #1c453c 55%, #244b38)"],
+    ["plum", "夜阑梅紫", "linear-gradient(135deg, #2b1f31, #452b47 55%, #211c2b)"],
+    ["image", "自选壁纸", "linear-gradient(135deg, #2c384a, #47586e)"]
   ];
   const root = document.documentElement;
   const dialog = document.querySelector("#appearanceDialog");
