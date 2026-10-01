@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "栖点 · 我的书签",
+  "version": "1.2.0",
+  "description": "展示和整理 Chrome 书签，支持搜索、背景设置与失效链接检查。",
+  "permissions": ["bookmarks", "favicon"],
+  "optional_host_permissions": ["http://*/*", "https://*/*"],
+  "action": {
+    "default_title": "打开栖点书签"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {
+    "16": "extension-icon-16.png",
+    "32": "extension-icon-32.png",
+    "48": "extension-icon-48.png",
+    "128": "extension-icon-128.png"
+  }
+}
