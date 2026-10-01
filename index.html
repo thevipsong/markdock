@@ -17,57 +17,338 @@
     <main class="app-window">
       <header class="titlebar">
         <div class="titlebar-left">
-          <h1 class="brand" aria-label="栖点"><span class="brand-mark"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5h10a1 1 0 0 1 1 1v14.2l-6-3.6-6 3.6V5.5a1 1 0 0 1 1-1Z" fill="currentColor"/></svg></span><span>栖点</span></h1>
+          <h1 class="brand" aria-label="栖点">
+            <span class="brand-mark">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5h10a1 1 0 0 1 1 1v14.2l-6-3.6-6 3.6V5.5a1 1 0 0 1 1-1Z" fill="currentColor"/></svg>
+            </span>
+            <span>栖点</span>
+          </h1>
           <span class="header-count" id="countLine">把常用网站放在触手可及的地方</span>
         </div>
-        <label class="search-box"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg><input id="searchInput" type="search" placeholder="搜索名称、网址或拼音首字母" aria-label="搜索名称、网址或拼音首字母" autocomplete="off" /><kbd>/</kbd></label>
+
+        <div class="search-wrap">
+          <label class="search-box" for="searchInput">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg>
+            <input id="searchInput" type="search" placeholder="搜索名称、网址、拼音首字母..." aria-label="搜索书签" autocomplete="off" />
+            <button class="search-clear" id="searchClearBtn" type="button" aria-label="清空搜索" hidden title="清空搜索">×</button>
+            <kbd title="按 / 键快速聚焦">/</kbd>
+          </label>
+        </div>
+
         <div class="titlebar-right">
           <span class="private-badge" id="syncBadge"><span></span><span id="syncBadgeText">本地保存</span></span>
-          <div class="actions-wrap"><button class="button button-quiet" id="actionsButton" type="button" aria-expanded="false" aria-controls="actionsMenu">操作 <span class="chevron">⌄</span></button><div class="actions-menu" id="actionsMenu" hidden>
-            <button id="addButton" type="button">添加本地书签</button>
-            <button id="importButton" type="button">导入本地书签</button>
-            <button id="exportButton" type="button" aria-expanded="false" aria-controls="exportMenu">导出书签 <span class="chevron">›</span></button>
-            <div class="export-menu" id="exportMenu" hidden><button type="button" data-export="html">浏览器书签 HTML</button><button type="button" data-export="json">JSON 备份</button></div>
-            <button id="duplicateButton" type="button">查找重复书签</button>
-            <button id="deadLinkButton" type="button">检查失效链接</button>
-          </div></div>
-          <button class="theme-toggle" id="appearanceButton" type="button" aria-label="背景设置" title="背景设置"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16M6 16l3-8 4 5 3-3 3 6H6Z"/><circle cx="17" cy="6" r="2"/></svg></button>
+
+          <button class="button button-primary quick-add-btn" id="quickAddButton" type="button" title="添加新书签">
+            <span class="plus">+</span> 添加书签
+          </button>
+
+          <!-- View Mode Toggle -->
+          <div class="view-toggle" role="group" aria-label="视图模式">
+            <button type="button" id="viewGridBtn" class="icon-toggle is-active" title="网格卡片视图" aria-label="网格卡片视图">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+            </button>
+            <button type="button" id="viewListBtn" class="icon-toggle" title="紧凑列表视图" aria-label="紧凑列表视图">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="4" cy="6" r="1.5" fill="currentColor"/><circle cx="4" cy="12" r="1.5" fill="currentColor"/><circle cx="4" cy="18" r="1.5" fill="currentColor"/></svg>
+            </button>
+          </div>
+
+          <!-- Sort Dropdown -->
+          <div class="sort-wrap">
+            <button class="button button-quiet sort-button" id="sortButton" type="button" aria-expanded="false" aria-controls="sortMenu" title="排序方式">
+              <svg class="sort-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M7 12h10M10 17h4"/></svg>
+              <span id="sortLabel">默认</span>
+              <span class="chevron">⌄</span>
+            </button>
+            <div class="sort-menu" id="sortMenu" hidden>
+              <button type="button" data-sort="default" class="sort-option is-active">默认顺序</button>
+              <button type="button" data-sort="name" class="sort-option">按名称 A-Z</button>
+              <button type="button" data-sort="recent" class="sort-option">最近添加优先</button>
+              <button type="button" data-sort="domain" class="sort-option">按网站域名</button>
+            </div>
+          </div>
+
+          <!-- Actions Dropdown -->
+          <div class="actions-wrap">
+            <button class="button button-quiet" id="actionsButton" type="button" aria-expanded="false" aria-controls="actionsMenu">
+              操作 <span class="chevron">⌄</span>
+            </button>
+            <div class="actions-menu" id="actionsMenu" hidden>
+              <button id="addButton" type="button">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg> 添加书签
+              </button>
+              <button id="importButton" type="button">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0-4-4m4 4 4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg> 导入本地书签
+              </button>
+              <button id="exportButton" type="button" aria-expanded="false" aria-controls="exportMenu">
+                <span class="menu-item-content">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3m0 0-4 4m4-4 4 4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg> 导出书签
+                </span>
+                <span class="chevron">›</span>
+              </button>
+              <div class="export-menu" id="exportMenu" hidden>
+                <button type="button" data-export="html">浏览器书签 HTML</button>
+                <button type="button" data-export="json">JSON 备份</button>
+              </div>
+              <div class="menu-divider"></div>
+              <button id="collapseAllButton" type="button">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 11l5-5 5 5M7 13l5 5 5-5"/></svg> <span id="collapseAllLabel">折叠所有分组</span>
+              </button>
+              <button id="duplicateButton" type="button">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg> 查找重复书签
+              </button>
+              <button id="deadLinkButton" type="button">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10.5 8.5 5 5M15 9l-4 4M14 11a4.2 4.2 0 0 0 0-6L11 2a4.2 4.2 0 0 0-6 6l2 2m4 4 2 2a4.2 4.2 0 0 0 6-6l-2-2"/></svg> 检查失效链接
+              </button>
+              <div class="menu-divider"></div>
+              <button id="shortcutsButton" type="button">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="3"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M6 12h.01M18 12h.01M8 16h8"/></svg> 快捷键指南 (?)
+              </button>
+            </div>
+          </div>
+
+          <button class="theme-toggle" id="appearanceButton" type="button" aria-label="背景设置" title="背景设置">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16M6 16l3-8 4 5 3-3 3 6H6Z"/><circle cx="17" cy="6" r="2"/></svg>
+          </button>
           <button class="theme-toggle" id="themeToggle" type="button" aria-label="切换暗黑模式" title="切换暗黑模式">
             <svg class="theme-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.1 15.7A8.7 8.7 0 0 1 8.3 3.9 8.8 8.8 0 1 0 20.1 15.7Z"/></svg>
             <svg class="theme-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.7"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
           </button>
         </div>
       </header>
-      <nav class="tabs" id="tabs" aria-label="书签分类"></nav>
+
+      <div class="tabs-bar">
+        <nav class="tabs" id="tabs" aria-label="书签分类"></nav>
+        <div class="search-hint-bar" id="searchHintBar" hidden>
+          <span id="searchResultNote"></span>
+          <button type="button" id="clearSearchScopeBtn" class="tag-button">清空搜索</button>
+        </div>
+      </div>
+
       <input id="fileInput" type="file" accept=".html,.htm,.json,text/html,application/json" hidden />
 
-      <div class="demo-banner" id="demoBanner" hidden><span class="demo-sparkle">✦</span><span>这里展示的是示例书签。</span><button id="demoImportButton" type="button">导入我的书签 <span aria-hidden="true">→</span></button></div>
+      <div class="demo-banner" id="demoBanner" hidden>
+        <span class="demo-sparkle">✦</span>
+        <span>这里展示的是示例书签。导入你的浏览器书签开始专属体验。</span>
+        <button id="demoImportButton" type="button">导入我的书签 <span aria-hidden="true">→</span></button>
+      </div>
+
       <section class="content" id="content" aria-live="polite"></section>
-      <footer class="app-footer"><span>栖点 · 给书签一个清爽的家</span><span id="footerCount"></span></footer>
+
+      <footer class="app-footer">
+        <div class="footer-left">
+          <span>栖点 · 给书签一个清爽、安静的家</span>
+          <button type="button" class="footer-link" id="footerShortcutsLink">快捷键 (?)</button>
+        </div>
+        <span id="footerCount">0 个书签</span>
+      </footer>
     </main>
 
+    <!-- Bookmark Dialog -->
     <dialog id="bookmarkDialog" class="bookmark-dialog" aria-labelledby="dialogTitle">
       <form id="bookmarkForm" novalidate>
-        <div class="dialog-heading"><div><p class="eyebrow">BOOKMARK</p><h2 id="dialogTitle">添加书签</h2></div><button class="icon-button" id="closeDialogButton" type="button" aria-label="关闭">×</button></div>
-        <label class="field"><span>名称</span><input id="titleField" name="title" required maxlength="512" placeholder="例如：我的工作台" /></label>
-        <label class="field"><span>网址</span><input id="urlField" name="url" required type="text" inputmode="url" placeholder="https://example.com" /></label>
-        <div class="field-grid"><label class="field"><span>分类</span><input id="categoryField" name="category" list="categorySuggestions" maxlength="50" placeholder="例如：工作" /><datalist id="categorySuggestions"></datalist></label><label class="field"><span>分组</span><input id="groupField" name="group" maxlength="100" placeholder="例如：常用工具" /></label></div>
-        <label class="favorite-check"><input id="favoriteField" name="favorite" type="checkbox" /><span>加入收藏</span></label>
-        <p class="dialog-hint" id="chromeEditHint" hidden>此书签来自 Chrome；修改名称和网址会同步写回 Chrome。移动文件夹请使用右键菜单。</p>
+        <div class="dialog-heading">
+          <div><p class="eyebrow">BOOKMARK</p><h2 id="dialogTitle">添加书签</h2></div>
+          <button class="icon-button" id="closeDialogButton" type="button" aria-label="关闭">×</button>
+        </div>
+
+        <!-- Destination Selector in Extension Mode -->
+        <div class="field" id="targetDestinationWrap" hidden>
+          <span>保存位置</span>
+          <div class="segmented-control" id="saveDestinationToggle">
+            <button type="button" class="segment-btn is-active" data-dest="chrome">保存到 Chrome 书签</button>
+            <button type="button" class="segment-btn" data-dest="local">仅栖点本地</button>
+          </div>
+        </div>
+
+        <label class="field">
+          <span>名称</span>
+          <input id="titleField" name="title" required maxlength="512" placeholder="例如：我的工作台" autocomplete="off" />
+        </label>
+
+        <label class="field">
+          <span>网址</span>
+          <input id="urlField" name="url" required type="text" inputmode="url" placeholder="https://example.com" autocomplete="off" />
+        </label>
+
+        <!-- Chrome Folder Select when saving to or editing Chrome -->
+        <div class="field" id="chromeFolderSelectWrap" hidden>
+          <span>Chrome 目标文件夹</span>
+          <select id="chromeFolderSelect"></select>
+        </div>
+
+        <!-- Category & Group fields for Local bookmarks -->
+        <div class="field-grid" id="localOrganizeFields">
+          <label class="field">
+            <span>分类</span>
+            <input id="categoryField" name="category" list="categorySuggestions" maxlength="50" placeholder="例如：工作" />
+            <datalist id="categorySuggestions"></datalist>
+          </label>
+          <label class="field">
+            <span>分组</span>
+            <input id="groupField" name="group" maxlength="100" placeholder="例如：常用工具" />
+          </label>
+        </div>
+
+        <label class="favorite-check">
+          <input id="favoriteField" name="favorite" type="checkbox" />
+          <span>加入收藏</span>
+        </label>
+
+        <p class="dialog-hint" id="chromeEditHint" hidden>修改将同步写回 Chrome 书签。</p>
         <p class="form-error" id="formError" role="alert" hidden></p>
-        <div class="dialog-actions"><button class="button button-danger" id="deleteButton" type="button" hidden>删除书签</button><span class="dialog-spacer"></span><button class="button button-quiet" id="cancelDialogButton" type="button">取消</button><button class="button button-primary" type="submit">保存书签</button></div>
+
+        <div class="dialog-actions">
+          <button class="button button-danger" id="deleteButton" type="button" hidden>删除书签</button>
+          <span class="dialog-spacer"></span>
+          <button class="button button-quiet" id="cancelDialogButton" type="button">取消</button>
+          <button class="button button-primary" type="submit">保存书签</button>
+        </div>
       </form>
     </dialog>
-    <dialog id="moveDialog" class="bookmark-dialog" aria-labelledby="moveTitle"><form id="moveForm">
-      <div class="dialog-heading"><div><p class="eyebrow">ORGANIZE</p><h2 id="moveTitle">移动到分组</h2></div><button class="icon-button" type="button" data-close-dialog="moveDialog" aria-label="关闭">×</button></div>
-      <label class="field"><span>目标分组</span><select id="moveTarget" required></select></label>
-      <label class="field"><span>新建子分组（可选）</span><input id="newGroupName" maxlength="80" placeholder="留空则直接移入选中的分组" /></label>
-      <p class="dialog-hint">Chrome 书签的移动会写回 Chrome。</p>
-      <div class="dialog-actions"><span class="dialog-spacer"></span><button class="button button-quiet" type="button" data-close-dialog="moveDialog">取消</button><button class="button button-primary" type="submit">移动书签</button></div>
-    </form></dialog>
-    <dialog id="auditDialog" class="bookmark-dialog audit-dialog" aria-labelledby="auditTitle"><div class="dialog-heading"><div><p class="eyebrow">CLEANUP</p><h2 id="auditTitle">书签检查</h2></div><button class="icon-button" type="button" data-close-dialog="auditDialog" aria-label="关闭">×</button></div><p id="auditSummary"></p><div id="auditResults" class="audit-results"></div><div class="dialog-actions"><span class="dialog-spacer"></span><button class="button button-quiet" type="button" data-close-dialog="auditDialog">关闭</button><button class="button button-danger" id="mergeDuplicatesButton" type="button" hidden>合并完全重复的网址</button></div></dialog>
-    <dialog id="appearanceDialog" class="bookmark-dialog" aria-labelledby="appearanceTitle"><div class="dialog-heading"><div><p class="eyebrow">APPEARANCE</p><h2 id="appearanceTitle">背景设置</h2></div><button class="icon-button" type="button" data-close-dialog="appearanceDialog" aria-label="关闭">×</button></div><div class="preset-grid" id="presetGrid"></div><label class="field"><span>上传背景图片</span><input id="backgroundFile" type="file" accept="image/*" /></label><p class="dialog-hint" id="appearanceStatus">图片保存在当前浏览器，刷新后仍会显示。</p><label class="range-field"><span>模糊强度 <output id="blurValue"></output></span><input id="blurRange" type="range" min="0" max="40" step="1" /></label><label class="range-field"><span>遮罩浓度 <output id="overlayValue"></output></span><input id="overlayRange" type="range" min="0" max="80" step="1" /></label><div class="dialog-actions"><button class="button button-quiet" id="removeBackground" type="button">恢复默认</button><span class="dialog-spacer"></span><button class="button button-primary" type="button" data-close-dialog="appearanceDialog">完成</button></div></dialog>
-    <div class="context-menu" id="contextMenu" role="menu" hidden><button type="button" data-action="open" role="menuitem">打开书签</button><button type="button" data-action="edit" role="menuitem">编辑书签</button><button type="button" data-action="move" role="menuitem">移动分组</button><button type="button" data-action="delete" role="menuitem">删除书签</button></div>
+
+    <!-- Move Bookmark Dialog -->
+    <dialog id="moveDialog" class="bookmark-dialog" aria-labelledby="moveTitle">
+      <form id="moveForm">
+        <div class="dialog-heading">
+          <div><p class="eyebrow">ORGANIZE</p><h2 id="moveTitle">移动到分组</h2></div>
+          <button class="icon-button" type="button" data-close-dialog="moveDialog" aria-label="关闭">×</button>
+        </div>
+        <label class="field"><span>目标分组</span><select id="moveTarget" required></select></label>
+        <label class="field"><span>新建子分组（可选）</span><input id="newGroupName" maxlength="80" placeholder="留空则直接移入选中的分组" autocomplete="off" /></label>
+        <p class="dialog-hint">Chrome 书签的移动会同步写回 Chrome。</p>
+        <div class="dialog-actions">
+          <span class="dialog-spacer"></span>
+          <button class="button button-quiet" type="button" data-close-dialog="moveDialog">取消</button>
+          <button class="button button-primary" type="submit">移动书签</button>
+        </div>
+      </form>
+    </dialog>
+
+    <!-- Rename Section Dialog -->
+    <dialog id="renameDialog" class="bookmark-dialog" aria-labelledby="renameTitle">
+      <form id="renameForm">
+        <div class="dialog-heading">
+          <div><p class="eyebrow">SECTION</p><h2 id="renameTitle">重命名分组</h2></div>
+          <button class="icon-button" type="button" data-close-dialog="renameDialog" aria-label="关闭">×</button>
+        </div>
+        <label class="field">
+          <span>新分组名称</span>
+          <input id="renameInput" required maxlength="100" placeholder="输入新的名称" autocomplete="off" />
+        </label>
+        <p class="dialog-hint" id="renameHint">重命名将更新此分组下的所有书签。</p>
+        <div class="dialog-actions">
+          <span class="dialog-spacer"></span>
+          <button class="button button-quiet" type="button" data-close-dialog="renameDialog">取消</button>
+          <button class="button button-primary" type="submit">保存名称</button>
+        </div>
+      </form>
+    </dialog>
+
+    <!-- Audit Dialog (Duplicates & Dead Links) -->
+    <dialog id="auditDialog" class="bookmark-dialog audit-dialog" aria-labelledby="auditTitle">
+      <div class="dialog-heading">
+        <div><p class="eyebrow">MAINTENANCE</p><h2 id="auditTitle">书签检查</h2></div>
+        <button class="icon-button" type="button" data-close-dialog="auditDialog" aria-label="关闭">×</button>
+      </div>
+
+      <div class="audit-summary-box">
+        <p id="auditSummary"></p>
+        <div class="audit-progress" id="auditProgressWrap" hidden>
+          <div class="audit-progress-bar" id="auditProgressBar"></div>
+        </div>
+      </div>
+
+      <div id="auditResults" class="audit-results"></div>
+
+      <div class="dialog-actions">
+        <span class="dialog-spacer"></span>
+        <button class="button button-quiet" type="button" data-close-dialog="auditDialog">关闭</button>
+        <button class="button button-danger" id="mergeDuplicatesButton" type="button" hidden>一键合并全部重复项</button>
+      </div>
+    </dialog>
+
+    <!-- Shortcuts Cheatsheet Dialog -->
+    <dialog id="shortcutsDialog" class="bookmark-dialog shortcuts-dialog" aria-labelledby="shortcutsTitle">
+      <div class="dialog-heading">
+        <div><p class="eyebrow">HELP</p><h2 id="shortcutsTitle">快捷键指南</h2></div>
+        <button class="icon-button" type="button" data-close-dialog="shortcutsDialog" aria-label="关闭">×</button>
+      </div>
+      <div class="shortcuts-table">
+        <div class="shortcut-row"><kbd>/</kbd><span>聚焦搜索框</span></div>
+        <div class="shortcut-row"><kbd>j</kbd> / <kbd>k</kbd> 或 <kbd>↓</kbd> / <kbd>↑</kbd><span>在可见书签中上下移动选择</span></div>
+        <div class="shortcut-row"><kbd>Enter</kbd><span>在新标签页打开当前选中的书签</span></div>
+        <div class="shortcut-row"><kbd>e</kbd><span>编辑当前选中的书签</span></div>
+        <div class="shortcut-row"><kbd>f</kbd><span>收藏 / 取消收藏当前书签</span></div>
+        <div class="shortcut-row"><kbd>m</kbd><span>移动当前书签到其他分组</span></div>
+        <div class="shortcut-row"><kbd>Delete</kbd> 或 <kbd>Backspace</kbd><span>删除当前选中的书签</span></div>
+        <div class="shortcut-row"><kbd>Esc</kbd><span>关闭菜单、对话框或清空搜索</span></div>
+        <div class="shortcut-row"><kbd>?</kbd><span>随时呼出此快捷键帮助</span></div>
+      </div>
+      <div class="dialog-actions">
+        <span class="dialog-spacer"></span>
+        <button class="button button-primary" type="button" data-close-dialog="shortcutsDialog">知道了</button>
+      </div>
+    </dialog>
+
+    <!-- Appearance Dialog -->
+    <dialog id="appearanceDialog" class="bookmark-dialog appearance-dialog" aria-labelledby="appearanceTitle">
+      <div class="dialog-heading">
+        <div><p class="eyebrow">APPEARANCE</p><h2 id="appearanceTitle">背景与视觉设置</h2></div>
+        <button class="icon-button" type="button" data-close-dialog="appearanceDialog" aria-label="关闭">×</button>
+      </div>
+      <label class="field-label">预设背景色与渐变</label>
+      <div class="preset-grid" id="presetGrid"></div>
+      <label class="field">
+        <span>上传自定义壁纸</span>
+        <input id="backgroundFile" type="file" accept="image/*" />
+      </label>
+      <p class="dialog-hint" id="appearanceStatus">图片保存在浏览器本地数据库，离线也始终可用。</p>
+      <label class="range-field">
+        <span>毛玻璃模糊强度 <output id="blurValue"></output></span>
+        <input id="blurRange" type="range" min="0" max="40" step="1" />
+      </label>
+      <label class="range-field">
+        <span>暗色遮罩浓度 <output id="overlayValue"></output></span>
+        <input id="overlayRange" type="range" min="0" max="80" step="1" />
+      </label>
+      <div class="dialog-actions">
+        <button class="button button-quiet" id="removeBackground" type="button">恢复默认</button>
+        <span class="dialog-spacer"></span>
+        <button class="button button-primary" type="button" data-close-dialog="appearanceDialog">完成</button>
+      </div>
+    </dialog>
+
+    <!-- Right-click Context Menu -->
+    <div class="context-menu" id="contextMenu" role="menu" hidden>
+      <button type="button" data-action="open" role="menuitem">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/></svg> 打开书签
+      </button>
+      <button type="button" data-action="open-window" role="menuitem">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/></svg> 在新窗口打开
+      </button>
+      <div class="menu-divider"></div>
+      <button type="button" data-action="copy-url" role="menuitem">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> 复制网址
+      </button>
+      <button type="button" data-action="copy-title" role="menuitem">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg> 复制名称
+      </button>
+      <button type="button" data-action="toggle-favorite" role="menuitem">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg> <span id="contextFavoriteLabel">加入收藏</span>
+      </button>
+      <div class="menu-divider"></div>
+      <button type="button" data-action="edit" role="menuitem">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg> 编辑书签
+      </button>
+      <button type="button" data-action="move" role="menuitem">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg> 移动分组
+      </button>
+      <div class="menu-divider"></div>
+      <button type="button" data-action="delete" role="menuitem" class="danger-action">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> 删除书签
+      </button>
+    </div>
+
     <div class="bookmark-tooltip" id="bookmarkTooltip" role="tooltip" hidden></div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
   </body>

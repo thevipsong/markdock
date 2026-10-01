@@ -4,8 +4,12 @@
   const presets = [
     ["dusk", "暮山", "linear-gradient(135deg,#6e899a,#142944)"],
     ["aurora", "极光", "linear-gradient(135deg,#1a425d,#9880b9,#263d40)"],
+    ["sunset", "晚霞", "linear-gradient(135deg,#844c82,#e06d53)"],
+    ["forest", "苍翠", "linear-gradient(135deg,#1d433b,#437055)"],
+    ["ocean", "碧海", "linear-gradient(135deg,#1c3b57,#2d6b7b)"],
     ["slate", "石板", "#263646"],
     ["plum", "梅紫", "#433248"],
+    ["obsidian", "曜黑", "linear-gradient(135deg,#1e222d,#0d1117)"],
     ["image", "我的图片", "linear-gradient(135deg,#4b5b71,#8796a2)"]
   ];
   const root = document.documentElement;
