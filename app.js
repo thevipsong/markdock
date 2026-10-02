@@ -209,18 +209,25 @@
   function syncThemeButton() {
     const dark = document.documentElement.dataset.theme === "dark";
     const label = dark ? "切换浅色模式" : "切换暗黑模式";
-    refs.themeToggle.setAttribute("aria-label", label);
-    refs.themeToggle.title = label;
+    if (refs.themeToggle) {
+      refs.themeToggle.setAttribute("aria-label", label);
+      refs.themeToggle.title = label;
+    }
     const meta = $("meta[name='theme-color']");
-    if (meta) meta.content = dark ? "#111725" : "#f6f7fb";
+    if (meta) meta.content = dark ? "#101014" : "#f4f4f6";
   }
 
   function toggleTheme() {
-    const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
-    document.documentElement.dataset.theme = next;
-    try { localStorage.setItem("qidian-theme-v1", next); } catch { /* ignore */ }
+    if (window.qidianSkin && typeof window.qidianSkin.toggleTheme === "function") {
+      window.qidianSkin.toggleTheme();
+    } else {
+      const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+      document.documentElement.dataset.theme = next;
+      try { localStorage.setItem("qidian-theme-v1", next); } catch { /* ignore */ }
+    }
     syncThemeButton();
   }
+  window.addEventListener("qidian:skinchange", syncThemeButton);
 
   function toast(message, isError = false) {
     clearTimeout(toastTimer);

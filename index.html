@@ -15,9 +15,9 @@
     <a class="skip-link" href="#content">跳到书签内容</a>
     
     <!-- Fullscreen Immersive Ambient Backdrop -->
-    <div class="backdrop" aria-hidden="true">
-      <div class="backdrop-glow"></div>
-      <div class="backdrop-ambient"></div>
+    <div class="backdrop" id="backdrop" aria-hidden="true">
+      <div class="backdrop-image" id="backdropImage"></div>
+      <div class="backdrop-overlay" id="backdropOverlay"></div>
     </div>
 
     <main class="app-window">
@@ -108,8 +108,8 @@
             </div>
           </div>
 
-          <button class="theme-toggle" id="appearanceButton" type="button" aria-label="壁纸与背景设置" title="壁纸与背景设置">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16M6 16l3-8 4 5 3-3 3 6H6Z"/><circle cx="17" cy="6" r="2"/></svg>
+          <button class="theme-toggle" id="appearanceButton" type="button" aria-label="幻梦主题与外观设置" title="幻梦主题与外观设置">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c3.31 0 6-2.69 6-6 0-4.96-4.49-9-10-9zm-5.5 10c-.83 0-1.5-.67-1.5-1.5S5.67 9 6.5 9 8 9.67 8 10.5 7.33 12 6.5 12zm3-4C8.67 8 8 7.33 8 6.5S8.67 5 9.5 5s1.5.67 1.5 1.5S10.33 8 9.5 8zm5 0c-.83 0-1.5-.67-1.5-1.5S13.67 5 14.5 5s1.5.67 1.5 1.5S15.33 8 14.5 8zm3 4c-.83 0-1.5-.67-1.5-1.5S16.67 9 17.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z" fill="currentColor"/></svg>
           </button>
           <button class="theme-toggle" id="themeToggle" type="button" aria-label="切换暗黑模式" title="切换暗黑模式">
             <svg class="theme-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.1 15.7A8.7 8.7 0 0 1 8.3 3.9 8.8 8.8 0 1 0 20.1 15.7Z"/></svg>
@@ -298,29 +298,115 @@
       </div>
     </dialog>
 
-    <!-- Appearance Settings Dialog -->
+    <!-- Mirage Appearance Settings Dialog -->
     <dialog id="appearanceDialog" class="bookmark-dialog appearance-dialog" aria-labelledby="appearanceTitle">
       <div class="dialog-heading">
-        <div><p class="eyebrow">ATMOSPHERE</p><h2 id="appearanceTitle">沉浸氛围与背景</h2></div>
+        <div>
+          <p class="eyebrow">MIRAGE THEME</p>
+          <h2 id="appearanceTitle">幻梦皮肤与外观</h2>
+        </div>
         <button class="icon-button" type="button" data-close-dialog="appearanceDialog" aria-label="关闭">×</button>
       </div>
-      <label class="field-label">精选沉浸式主题</label>
-      <div class="preset-grid" id="presetGrid"></div>
-      <label class="field">
-        <span>上传自定义壁纸</span>
-        <input id="backgroundFile" type="file" accept="image/*" />
-      </label>
-      <p class="dialog-hint" id="appearanceStatus">图片保存在浏览器本地数据库，离线也始终可用。</p>
-      <label class="range-field">
-        <span>毛玻璃模糊强度 <output id="blurValue"></output></span>
-        <input id="blurRange" type="range" min="0" max="40" step="1" />
-      </label>
-      <label class="range-field">
-        <span>暗色遮罩浓度 <output id="overlayValue"></output></span>
-        <input id="overlayRange" type="range" min="0" max="80" step="1" />
-      </label>
+
+      <div class="appearance-body">
+        <!-- 1. 皮肤选择 (8款幻梦经典) -->
+        <div class="appearance-section">
+          <div class="section-title-row">
+            <span class="section-title">皮肤风格</span>
+            <span class="skin-current-tag" id="currentSkinTag">星云紫 (默认)</span>
+          </div>
+          <div class="skin-grid" id="skinGrid"></div>
+        </div>
+
+        <!-- 2. 玻璃材质 (毛玻璃 vs 液态玻璃) -->
+        <div class="appearance-section">
+          <div class="section-title-row">
+            <span class="section-title">玻璃质感材质</span>
+            <span class="section-subtext">毛玻璃柔和护眼清晰，液态玻璃通透折射</span>
+          </div>
+          <div class="material-grid" id="materialGrid">
+            <button type="button" class="material-card is-active" data-material="frosted" id="matBtnFrosted">
+              <div class="material-swatch-box material-swatch-frosted">
+                <span class="material-swatch-lens"></span>
+              </div>
+              <div class="material-meta">
+                <span class="material-name">经典毛玻璃</span>
+                <span class="material-desc">奶霜温润，文字高清晰度</span>
+              </div>
+            </button>
+            <button type="button" class="material-card" data-material="liquid" id="matBtnLiquid">
+              <div class="material-swatch-box material-swatch-liquid">
+                <span class="material-swatch-lens"></span>
+              </div>
+              <div class="material-meta">
+                <span class="material-name">液态玻璃</span>
+                <span class="material-desc">通透水润，折射高光更显底色</span>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        <!-- 3. 强调色 (12 选色 + 自定义 + 随机 + 恢复) -->
+        <div class="appearance-section">
+          <div class="section-title-row">
+            <span class="section-title">品牌强调色</span>
+            <div class="accent-btn-group">
+              <button type="button" class="tag-button" id="randomAccentBtn" title="随机生成灵感色彩">随机灵感</button>
+              <button type="button" class="tag-button" id="resetAccentBtn" title="恢复皮肤默认品牌色">跟随皮肤</button>
+            </div>
+          </div>
+          <div class="accent-palette-row">
+            <div class="accent-palette" id="accentPalette"></div>
+            <label class="accent-custom-picker" title="自定义任意颜色">
+              <input type="color" id="accentColorPicker" value="#8b7cf6" />
+              <span class="picker-label">自定义</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- 4. 壁纸模式 (主题弥散光 / 每日必应 / 自定义上传) -->
+        <div class="appearance-section">
+          <div class="section-title-row">
+            <span class="section-title">背景壁纸</span>
+          </div>
+          <div class="segmented-control" id="wallpaperModeToggle">
+            <button type="button" class="segment-btn is-active" data-mode="diffuse">主题弥散光</button>
+            <button type="button" class="segment-btn" data-mode="bing">每日必应壁纸</button>
+            <button type="button" class="segment-btn" data-mode="custom">自定义图片</button>
+          </div>
+
+          <!-- 自定义图片控制区 -->
+          <div class="custom-wallpaper-wrap" id="customWallpaperWrap" hidden>
+            <div class="wallpaper-actions-row">
+              <button type="button" class="button button-quiet" id="uploadWallpaperBtn">
+                <svg viewBox="0 0 24 24" aria-hidden="true" width="15" height="15"><path d="M12 3v12m0 0-4-4m4 4 4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+                <span>上传本地图片</span>
+              </button>
+              <input id="wallpaperFileInput" type="file" accept="image/*" hidden />
+              <div class="url-input-box">
+                <input id="wallpaperUrlInput" type="url" placeholder="或粘贴网络图片网址..." autocomplete="off" />
+                <button type="button" class="button button-quiet" id="applyWallpaperUrlBtn">应用</button>
+              </div>
+            </div>
+            <p class="dialog-hint" id="wallpaperStatusText">本地图片将保存在浏览器本地，离线亦可使用。</p>
+          </div>
+
+          <!-- 壁纸微调滑块 -->
+          <div class="wallpaper-slider-box" id="wallpaperSliderBox" hidden>
+            <label class="range-field">
+              <span>壁纸模糊强度 <output id="blurValue">12px</output></span>
+              <input id="blurRange" type="range" min="0" max="40" step="1" value="12" />
+            </label>
+            <label class="range-field">
+              <span>暗色遮罩浓度 <output id="overlayValue">25%</output></span>
+              <input id="overlayRange" type="range" min="0" max="80" step="1" value="25" />
+            </label>
+          </div>
+        </div>
+      </div>
+
       <div class="dialog-actions">
-        <button class="button button-quiet" id="removeBackground" type="button">恢复默认</button>
+        <button class="button button-quiet" id="resetSkinSettingsBtn" type="button">恢复出厂配置</button>
         <span class="dialog-spacer"></span>
         <button class="button button-primary" type="button" data-close-dialog="appearanceDialog">完成</button>
       </div>
