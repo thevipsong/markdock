@@ -367,27 +367,31 @@
       button.className = "tab";
       if (state.activeTab === tab.id) button.setAttribute("aria-current", "page");
 
-      const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-      icon.setAttribute("class", "tab-icon");
-      icon.setAttribute("viewBox", "0 0 24 24");
-      icon.setAttribute("aria-hidden", "true");
-
       if (tab.type === "all") {
+        const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        icon.setAttribute("class", "tab-icon");
+        icon.setAttribute("viewBox", "0 0 24 24");
+        icon.setAttribute("aria-hidden", "true");
         icon.innerHTML = `<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>`;
+        button.append(icon);
       } else if (tab.type === "favorites") {
+        const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        icon.setAttribute("class", "tab-icon");
+        icon.setAttribute("viewBox", "0 0 24 24");
+        icon.setAttribute("aria-hidden", "true");
         icon.innerHTML = `<path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>`;
-      } else {
-        icon.innerHTML = `<path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/>`;
+        button.append(icon);
       }
 
       const label = document.createElement("span");
+      label.className = "tab-label";
       label.textContent = tab.label;
 
       const count = document.createElement("span");
       count.className = "tab-count";
       count.textContent = String(tab.count);
 
-      button.append(icon, label, count);
+      button.append(label, count);
 
       button.addEventListener("click", () => {
         state.activeTab = tab.id;
@@ -444,7 +448,7 @@
     const allBtn = document.createElement("button");
     allBtn.type = "button";
     allBtn.className = "sub-tab";
-    allBtn.textContent = `全部 (${folderItems.length})`;
+    allBtn.innerHTML = `<span>全部</span><span class="sub-tab-count">${folderItems.length}</span>`;
     if (!state.activeSubFolder) allBtn.setAttribute("aria-current", "page");
     allBtn.addEventListener("click", () => {
       state.activeSubFolder = "";
@@ -456,7 +460,7 @@
       const subBtn = document.createElement("button");
       subBtn.type = "button";
       subBtn.className = "sub-tab";
-      subBtn.textContent = `${subName} (${count})`;
+      subBtn.innerHTML = `<span>${escapeHtml(subName)}</span><span class="sub-tab-count">${count}</span>`;
       if (state.activeSubFolder === subName) subBtn.setAttribute("aria-current", "page");
       subBtn.addEventListener("click", () => {
         state.activeSubFolder = subName;
@@ -663,7 +667,7 @@
     renameBtn.type = "button";
     renameBtn.className = "section-action-btn";
     renameBtn.title = "重命名此文件夹";
-    renameBtn.textContent = "重命名";
+    renameBtn.innerHTML = `<svg viewBox="0 0 24 24" class="btn-icon" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><span>重命名</span>`;
     renameBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       openRenameDialog(section);
@@ -674,7 +678,7 @@
     openAll.type = "button";
     openAll.className = "section-action-btn";
     openAll.title = `在新标签页打开本文件夹 ${section.items.length} 个书签`;
-    openAll.textContent = "打开全部";
+    openAll.innerHTML = `<svg viewBox="0 0 24 24" class="btn-icon" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/></svg><span>打开全部</span>`;
     openAll.addEventListener("click", async (e) => {
       e.stopPropagation();
       if (section.items.length > 12 && !confirm(`将在新标签页打开本文件夹 ${section.items.length} 个书签，继续吗？`)) return;
@@ -773,16 +777,11 @@
     link.target = "_blank";
     link.rel = "noopener noreferrer";
     link.setAttribute("aria-label", `${item.title}，${item.url}`);
-    link.title = `${item.title}\n${item.url}`;
 
     link.addEventListener("mouseenter", () => showBookmarkTooltip(item, link));
     link.addEventListener("mouseleave", hideBookmarkTooltip);
     link.addEventListener("focus", () => showBookmarkTooltip(item, link));
     link.addEventListener("blur", hideBookmarkTooltip);
-
-    const dot = document.createElement("span");
-    dot.className = "bookmark-dot";
-    dot.setAttribute("aria-hidden", "true");
 
     const main = document.createElement("span");
     main.className = "bookmark-main";
@@ -792,18 +791,11 @@
     title.innerHTML = highlightMatch(item.title, queryTokens);
     main.append(title);
 
-    if (item.source === "chrome") {
-      const source = document.createElement("span");
-      source.className = "bookmark-source";
-      source.textContent = "Chrome";
-      main.append(source);
-    }
-
     const domain = document.createElement("span");
     domain.className = "bookmark-domain";
     domain.innerHTML = highlightMatch(hostOf(item.url) || item.url, queryTokens);
 
-    link.append(dot, main, domain);
+    link.append(main, domain);
 
     // Row Actions
     const actions = document.createElement("span");
@@ -812,7 +804,9 @@
     const favorite = document.createElement("button");
     favorite.type = "button";
     favorite.className = `mini-button${item.favorite ? " is-favorite" : ""}`;
-    favorite.textContent = item.favorite ? "★" : "☆";
+    favorite.innerHTML = item.favorite
+      ? `<svg viewBox="0 0 24 24" class="action-icon star-active" aria-hidden="true"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="currentColor"/></svg>`
+      : `<svg viewBox="0 0 24 24" class="action-icon" aria-hidden="true"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>`;
     favorite.setAttribute("aria-label", item.favorite ? `取消收藏 ${item.title}` : `收藏 ${item.title}`);
     favorite.title = item.favorite ? "取消收藏" : "加入收藏";
     favorite.addEventListener("click", (e) => {
@@ -824,7 +818,7 @@
     const edit = document.createElement("button");
     edit.type = "button";
     edit.className = "mini-button";
-    edit.textContent = "⋯";
+    edit.innerHTML = `<svg viewBox="0 0 24 24" class="action-icon" aria-hidden="true"><circle cx="12" cy="12" r="1.8" fill="currentColor"/><circle cx="19" cy="12" r="1.8" fill="currentColor"/><circle cx="5" cy="12" r="1.8" fill="currentColor"/></svg>`;
     edit.setAttribute("aria-label", `操作菜单：${item.title}`);
     edit.title = "更多操作";
     edit.addEventListener("click", (event) => {
