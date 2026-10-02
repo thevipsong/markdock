@@ -585,40 +585,129 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 }
 
 /* ==========================================================================
-   Minimalist Floating Category Pills
+   Minimalist Horizontal Folder Navigation Pills
    ========================================================================== */
+.tabs-wrap {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  padding: 4px 16px 8px;
+  margin: 0 auto;
+}
 .tabs {
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 6px;
-  padding: 6px 0 18px;
-  margin: 0 auto;
+  padding: 4px 6px 8px;
+  max-width: 100%;
   overflow-x: auto;
   scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
 }
 .tabs::-webkit-scrollbar { display: none; }
 .tab {
-  min-height: 34px;
-  padding: 0 16px;
+  min-height: 32px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   border-radius: 9999px;
-  border: 1px solid transparent;
-  background: transparent;
+  border: 1px solid var(--line);
+  background: var(--nav-bg);
   color: var(--text-muted);
-  font-size: 13.5px;
-  font-weight: 550;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
   white-space: nowrap;
+  cursor: pointer;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  user-select: none;
 }
 .tab:hover {
   color: var(--text);
-  background: var(--tab-hover-bg);
+  background: var(--surface-hover);
+  border-color: var(--line-strong);
 }
 .tab[aria-current="page"] {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: var(--accent-border);
+  font-weight: 600;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+.tab-icon {
+  width: 13px;
+  height: 13px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  opacity: 0.85;
+  flex-shrink: 0;
+}
+.tab-count {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--surface-soft);
+  color: var(--text-muted);
+  line-height: 1.25;
+}
+.tab[aria-current="page"] .tab-count {
+  background: rgba(99, 102, 241, 0.14);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* Sub-folder Navigation Pills */
+.sub-tabs-wrap {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  padding: 0 16px;
+  margin: -2px 0 16px;
+}
+.sub-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 5px;
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+  background: var(--nav-bg);
+  border: 1px solid var(--line);
+  border-radius: 9999px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+.sub-tabs::-webkit-scrollbar { display: none; }
+.sub-tab {
+  min-height: 26px;
+  padding: 0 11px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 9999px;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 11.5px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+.sub-tab:hover {
   color: var(--text);
-  background: var(--tab-active-bg);
-  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.06);
-  font-weight: 650;
+  background: var(--surface-hover);
+}
+.sub-tab[aria-current="page"] {
+  color: var(--accent);
+  background: var(--accent-soft);
+  font-weight: 600;
 }
 
 /* Search Hint Bar */
@@ -1418,33 +1507,31 @@ mark.search-highlight {
   color: var(--danger);
 }
 
-/* Tooltip */
+/* Non-intrusive Bottom-Left URL Preview (Native Browser Bubble Style) */
 .bookmark-tooltip {
-  position: fixed;
+  position: fixed !important;
+  left: 16px !important;
+  bottom: 12px !important;
+  top: auto !important;
+  right: auto !important;
   z-index: 1010;
-  max-width: min(480px, calc(100vw - 32px));
-  padding: 8px 12px;
+  max-width: min(560px, calc(100vw - 32px));
+  padding: 4px 10px;
   border: 1px solid var(--line-strong);
-  border-radius: 10px;
+  border-radius: 6px;
   background: var(--surface-raised);
-  color: var(--text);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
-  font-size: 12px;
-  line-height: 1.5;
-  overflow-wrap: anywhere;
+  color: var(--text-muted);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   pointer-events: none;
   backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   transition: opacity 0.15s ease;
-}
-.bookmark-tooltip strong {
-  display: block;
-  font-weight: 650;
-}
-.bookmark-tooltip small {
-  display: block;
-  margin-top: 2px;
-  color: var(--text-muted);
-  font-size: 11px;
 }
 
 /* Toast */
