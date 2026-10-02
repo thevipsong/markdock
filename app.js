@@ -11,7 +11,8 @@
   const $$ = (selector) => document.querySelectorAll(selector);
 
   const refs = {
-    tabs: $("#tabs"), content: $("#content"), count: $("#countLine"), footerCount: $("#footerCount"),
+    tabs: $("#tabs"), subTabsWrap: $("#subTabsWrap"), subTabs: $("#subTabs"),
+    content: $("#content"), count: $("#countLine"), footerCount: $("#footerCount"),
     banner: $("#demoBanner"), search: $("#searchInput"), searchClear: $("#searchClearBtn"),
     searchHintBar: $("#searchHintBar"), searchResultNote: $("#searchResultNote"), clearSearchScopeBtn: $("#clearSearchScopeBtn"),
     file: $("#fileInput"), quickAdd: $("#quickAddButton"),
@@ -80,6 +81,7 @@
     mode: EXTENSION_MODE || saved ? "personal" : "demo",
     items: saved ? saved.items : (EXTENSION_MODE ? [] : samples),
     activeTab: EXTENSION_MODE || saved ? "all" : "cat:Agent",
+    activeSubFolder: "",
     query: "",
     limit: PAGE_SIZE,
     editingId: null,
@@ -268,28 +270,184 @@
     return result;
   }
 
+  function getItemTopFolder(item) {
+    if (item.category === "书签栏") {
+      if (item.path && item.path.length > 1) return item.path[1];
+      if (item.group && item.group !== "常用书签") return item.group.split(" / ")[0];
+      return "常用书签";
+    }
+    return item.category || "未分类";
+  }
+
+  function getItemSubFolder(item, topFolder) {
+    if (item.category === "书签栏") {
+      if (item.path && item.path.length > 2) return item.path.slice(2).join(" / ");
+      if (item.group && item.group.startsWith(topFolder + " / ")) {
+        return item.group.slice(topFolder.length + 3);
+      }
+    }
+    return "";
+  }
+
+  function getTopTabs() {
+    const tabs = [{ id: "all", label: "全部", count: state.items.length, type: "all" }];
+
+    // Group items in "书签栏" by top-level folder
+    const bookmarkBarItems = state.items.filter((it) => it.category === "书签栏");
+    if (bookmarkBarItems.length > 0) {
+      const folderMap = new Map();
+      for (const it of bookmarkBarItems) {
+        const topFolder = getItemTopFolder(it);
+        if (!folderMap.has(topFolder)) {
+          folderMap.set(topFolder, { count: 0, subFolders: new Set() });
+        }
+        const info = folderMap.get(topFolder);
+        info.count++;
+        const sub = getItemSubFolder(it, topFolder);
+        if (sub) info.subFolders.add(sub);
+      }
+
+      for (const [folderName, info] of folderMap) {
+        tabs.push({
+          id: `folder:${folderName}`,
+          label: folderName,
+          count: info.count,
+          subFolders: [...info.subFolders],
+          type: "folder"
+        });
+      }
+
+      // Other categories (e.g. 移动设备书签)
+      const otherCategories = categories().filter((c) => c !== "书签栏");
+      for (const cat of otherCategories) {
+        const catItems = state.items.filter((it) => it.category === cat);
+        tabs.push({
+          id: `cat:${cat}`,
+          label: cat,
+          count: catItems.length,
+          type: "category"
+        });
+      }
+    } else {
+      for (const cat of categories()) {
+        const catItems = state.items.filter((it) => it.category === cat);
+        tabs.push({
+          id: `cat:${cat}`,
+          label: cat,
+          count: catItems.length,
+          type: "category"
+        });
+      }
+    }
+
+    const favCount = state.items.filter((it) => it.favorite).length;
+    tabs.push({ id: "favorites", label: "收藏", count: favCount, type: "favorites" });
+    return tabs;
+  }
+
   function renderTabs() {
     refs.tabs.replaceChildren();
-    const definitions = [
-      ["all", "全部"],
-      ...categories().map((category) => [`cat:${category}`, category]),
-      ["favorites", "收藏"]
-    ];
-    for (const [value, label] of definitions) {
+    const topTabs = getTopTabs();
+
+    // If activeTab is no longer valid, reset to "all"
+    if (!topTabs.some((t) => t.id === state.activeTab)) {
+      state.activeTab = "all";
+      state.activeSubFolder = "";
+    }
+
+    for (const tab of topTabs) {
       const button = document.createElement("button");
       button.type = "button";
       button.className = "tab";
-      button.textContent = label;
-      if (state.activeTab === value) button.setAttribute("aria-current", "page");
+      if (state.activeTab === tab.id) button.setAttribute("aria-current", "page");
+
+      const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      icon.setAttribute("class", "tab-icon");
+      icon.setAttribute("viewBox", "0 0 24 24");
+      icon.setAttribute("aria-hidden", "true");
+
+      if (tab.type === "all") {
+        icon.innerHTML = `<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>`;
+      } else if (tab.type === "favorites") {
+        icon.innerHTML = `<path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>`;
+      } else {
+        icon.innerHTML = `<path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/>`;
+      }
+
+      const label = document.createElement("span");
+      label.textContent = tab.label;
+
+      const count = document.createElement("span");
+      count.className = "tab-count";
+      count.textContent = String(tab.count);
+
+      button.append(icon, label, count);
+
       button.addEventListener("click", () => {
-        state.activeTab = value;
+        state.activeTab = tab.id;
+        state.activeSubFolder = "";
         state.query = "";
         state.limit = PAGE_SIZE;
         refs.search.value = "";
         refs.searchClear.hidden = true;
         render();
       });
+
       refs.tabs.append(button);
+    }
+
+    renderSubTabs();
+  }
+
+  function renderSubTabs() {
+    if (!state.activeTab.startsWith("folder:")) {
+      refs.subTabsWrap.hidden = true;
+      refs.subTabs.replaceChildren();
+      return;
+    }
+
+    const currentFolder = state.activeTab.slice(7);
+    const folderItems = state.items.filter((it) => getItemTopFolder(it) === currentFolder);
+
+    const subMap = new Map();
+    for (const it of folderItems) {
+      const sub = getItemSubFolder(it, currentFolder);
+      if (sub) {
+        subMap.set(sub, (subMap.get(sub) || 0) + 1);
+      }
+    }
+
+    if (subMap.size <= 1) {
+      refs.subTabsWrap.hidden = true;
+      refs.subTabs.replaceChildren();
+      return;
+    }
+
+    refs.subTabsWrap.hidden = false;
+    refs.subTabs.replaceChildren();
+
+    const allBtn = document.createElement("button");
+    allBtn.type = "button";
+    allBtn.className = "sub-tab";
+    allBtn.textContent = `全部 (${folderItems.length})`;
+    if (!state.activeSubFolder) allBtn.setAttribute("aria-current", "page");
+    allBtn.addEventListener("click", () => {
+      state.activeSubFolder = "";
+      render();
+    });
+    refs.subTabs.append(allBtn);
+
+    for (const [subName, count] of subMap) {
+      const subBtn = document.createElement("button");
+      subBtn.type = "button";
+      subBtn.className = "sub-tab";
+      subBtn.textContent = `${subName} (${count})`;
+      if (state.activeSubFolder === subName) subBtn.setAttribute("aria-current", "page");
+      subBtn.addEventListener("click", () => {
+        state.activeSubFolder = subName;
+        render();
+      });
+      refs.subTabs.append(subBtn);
     }
   }
 
@@ -299,29 +457,41 @@
     const compactQuery = rawQuery.replace(/\s+/g, "").toUpperCase();
 
     let items = state.items.filter((item) => {
-      // Tab filter: when search query is typed, search across all or current tab depending on selection
-      const inTab = !tokens.length
-        ? (state.activeTab === "all" || (state.activeTab === "favorites" ? item.favorite : item.category === state.activeTab.slice(4)))
-        : true; // global search when query present
-      if (!inTab) return false;
+      if (tokens.length) return true;
 
-      if (!tokens.length) return true;
-
-      // Smart multi-token search
-      const titleLower = item.title.toLocaleLowerCase();
-      const urlLower = item.url.toLocaleLowerCase();
-      const categoryLower = item.category.toLocaleLowerCase();
-      const groupLower = item.group.toLocaleLowerCase();
-      const pinyin = pinyinInitials(item.title);
-
-      return tokens.every((token) => {
-        return titleLower.includes(token)
-          || urlLower.includes(token)
-          || categoryLower.includes(token)
-          || groupLower.includes(token)
-          || (pinyin && pinyin.includes(token.toUpperCase()));
-      }) || (compactQuery && pinyin.includes(compactQuery));
+      if (state.activeTab === "all") return true;
+      if (state.activeTab === "favorites") return item.favorite;
+      if (state.activeTab.startsWith("cat:")) {
+        return item.category === state.activeTab.slice(4);
+      }
+      if (state.activeTab.startsWith("folder:")) {
+        const topFolder = state.activeTab.slice(7);
+        if (getItemTopFolder(item) !== topFolder) return false;
+        if (state.activeSubFolder) {
+          return getItemSubFolder(item, topFolder) === state.activeSubFolder;
+        }
+        return true;
+      }
+      return true;
     });
+
+    if (tokens.length) {
+      items = items.filter((item) => {
+        const titleLower = item.title.toLocaleLowerCase();
+        const urlLower = item.url.toLocaleLowerCase();
+        const categoryLower = item.category.toLocaleLowerCase();
+        const groupLower = item.group.toLocaleLowerCase();
+        const pinyin = pinyinInitials(item.title);
+
+        return tokens.every((token) => {
+          return titleLower.includes(token)
+            || urlLower.includes(token)
+            || categoryLower.includes(token)
+            || groupLower.includes(token)
+            || (pinyin && pinyin.includes(token.toUpperCase()));
+        }) || (compactQuery && pinyin.includes(compactQuery));
+      });
+    }
 
     // Sorting
     if (state.sortMode === "name") {
@@ -417,8 +587,26 @@
     }
   }
 
+  function formatSectionTitle(section) {
+    if (state.activeTab.startsWith("folder:")) {
+      const topFolder = state.activeTab.slice(7);
+      if (section.group.startsWith(topFolder + " / ")) {
+        return section.group.slice(topFolder.length + 3);
+      }
+      return section.group;
+    }
+    if (section.category === "书签栏") {
+      return section.group;
+    }
+    if (state.activeTab.startsWith("cat:") && !state.query) {
+      return section.group;
+    }
+    return `${section.category} · ${section.group}`;
+  }
+
   function buildSection(section) {
-    const isCollapsed = state.collapsedSections.has(section.key);
+    const isFolderView = state.activeTab.startsWith("folder:");
+    const isCollapsed = isFolderView ? false : state.collapsedSections.has(section.key);
     const element = document.createElement("section");
     element.className = `section${isCollapsed ? " is-collapsed" : ""}`;
     element.dataset.sectionKey = section.key;
@@ -443,9 +631,7 @@
     folderIcon.innerHTML = `<path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/>`;
 
     const heading = document.createElement("h2");
-    heading.textContent = state.activeTab.startsWith("cat:") && !state.query
-      ? section.group
-      : `${section.category} · ${section.group}`;
+    heading.textContent = formatSectionTitle(section);
 
     const note = document.createElement("span");
     note.className = "section-note";
@@ -543,6 +729,7 @@
     link.target = "_blank";
     link.rel = "noopener noreferrer";
     link.setAttribute("aria-label", `${item.title}，${item.url}`);
+    link.title = `${item.title}\n${item.url}`;
 
     link.addEventListener("mouseenter", () => showBookmarkTooltip(item, link));
     link.addEventListener("mouseleave", hideBookmarkTooltip);
@@ -1119,18 +1306,8 @@
 
   function showBookmarkTooltip(item, anchor) {
     if (!anchor.isConnected || !refs.contextMenu.hidden) return;
-    refs.tooltip.replaceChildren();
-    const title = document.createElement("strong");
-    title.textContent = item.title;
-    const url = document.createElement("small");
-    url.textContent = item.url;
-    refs.tooltip.append(title, url);
+    refs.tooltip.textContent = item.url;
     refs.tooltip.hidden = false;
-    const box = anchor.getBoundingClientRect();
-    const width = refs.tooltip.offsetWidth;
-    const height = refs.tooltip.offsetHeight;
-    refs.tooltip.style.left = `${Math.max(12, Math.min(box.left, innerWidth - width - 12))}px`;
-    refs.tooltip.style.top = `${box.bottom + height + 8 < innerHeight ? box.bottom + 6 : box.top - height - 6}px`;
   }
 
   function hideContextMenu() {
