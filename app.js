@@ -75,7 +75,13 @@
   const chromeFavorites = new Set(saved?.chromeFavorites || []);
 
   let savedCollapsed = [];
-  try { savedCollapsed = JSON.parse(localStorage.getItem(COLLAPSED_KEY) || "[]"); } catch { /* ignore */ }
+  try {
+    const raw = JSON.parse(localStorage.getItem(COLLAPSED_KEY) || "[]");
+    if (Array.isArray(raw)) {
+      savedCollapsed = raw.map((k) => (typeof k === "string" ? k.replace("\u0000", ":::") : k));
+      try { localStorage.setItem(COLLAPSED_KEY, JSON.stringify(savedCollapsed)); } catch { /* ignore */ }
+    }
+  } catch { /* ignore */ }
 
   const state = {
     mode: EXTENSION_MODE || saved ? "personal" : "demo",
@@ -390,6 +396,15 @@
         state.limit = PAGE_SIZE;
         refs.search.value = "";
         refs.searchClear.hidden = true;
+        if (tab.id.startsWith("folder:")) {
+          const folderName = tab.id.slice(7);
+          for (const k of [...state.collapsedSections]) {
+            if (k.startsWith(`${folderName}:::`) || k.includes(`:::${folderName}`) || k.includes(folderName)) {
+              state.collapsedSections.delete(k);
+            }
+          }
+          saveViewPreferences();
+        }
         render();
       });
 
@@ -566,7 +581,7 @@
     const visible = filtered.slice(0, state.limit);
     const sections = new Map();
     for (const item of visible) {
-      const key = `${item.category}\u0000${item.group}`;
+      const key = `${item.category}:::${item.group}`;
       if (!sections.has(key)) {
         sections.set(key, { category: item.category, group: item.group, key, items: [] });
       }
@@ -585,6 +600,7 @@
       button.addEventListener("click", () => { state.limit += PAGE_SIZE; render(); });
       refs.content.append(button);
     }
+    updateCollapseAllLabel();
   }
 
   function formatSectionTitle(section) {
@@ -605,8 +621,7 @@
   }
 
   function buildSection(section) {
-    const isFolderView = state.activeTab.startsWith("folder:");
-    const isCollapsed = isFolderView ? false : state.collapsedSections.has(section.key);
+    const isCollapsed = state.collapsedSections.has(section.key);
     const element = document.createElement("section");
     element.className = `section${isCollapsed ? " is-collapsed" : ""}`;
     element.dataset.sectionKey = section.key;
@@ -622,7 +637,7 @@
     toggleBtn.innerHTML = `<svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>`;
     toggleBtn.addEventListener("click", (e) => {
       e.stopPropagation();
-      toggleSectionCollapse(section.key);
+      toggleSectionCollapse(section.key, element);
     });
 
     const folderIcon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -677,7 +692,10 @@
     actions.append(renameBtn, openAll);
     header.append(toggleBtn, folderIcon, heading, note, divider, actions);
 
-    header.addEventListener("click", () => toggleSectionCollapse(section.key));
+    header.addEventListener("click", (e) => {
+      if (e.target.closest(".section-action-btn")) return;
+      toggleSectionCollapse(section.key, element);
+    });
 
     const list = document.createElement("div");
     list.className = "bookmark-list";
@@ -691,14 +709,28 @@
     return element;
   }
 
-  function toggleSectionCollapse(key) {
+  function toggleSectionCollapse(key, sectionEl = null) {
     if (state.collapsedSections.has(key)) state.collapsedSections.delete(key);
     else state.collapsedSections.add(key);
     saveViewPreferences();
-    const sectionEl = document.querySelector(`[data-section-key="${CSS.escape(key)}"]`);
-    if (sectionEl) {
-      sectionEl.classList.toggle("is-collapsed", state.collapsedSections.has(key));
+
+    let el = sectionEl;
+    if (!el) {
+      for (const candidate of document.querySelectorAll(".section")) {
+        if (candidate.dataset.sectionKey === key) {
+          el = candidate;
+          break;
+        }
+      }
     }
+
+    if (el) {
+      const isCollapsed = state.collapsedSections.has(key);
+      el.classList.toggle("is-collapsed", isCollapsed);
+      const btn = el.querySelector(".section-toggle-btn");
+      if (btn) btn.setAttribute("aria-label", isCollapsed ? "展开文件夹" : "折叠文件夹");
+    }
+    updateCollapseAllLabel();
   }
 
   function toggleAllSectionsCollapse() {
@@ -706,12 +738,24 @@
     const allCollapsed = [...sections].every((el) => el.classList.contains("is-collapsed"));
     for (const el of sections) {
       const key = el.dataset.sectionKey;
-      if (allCollapsed) state.collapsedSections.delete(key);
-      else state.collapsedSections.add(key);
-      el.classList.toggle("is-collapsed", !allCollapsed);
+      if (!key) continue;
+      const willCollapse = !allCollapsed;
+      if (willCollapse) state.collapsedSections.add(key);
+      else state.collapsedSections.delete(key);
+      el.classList.toggle("is-collapsed", willCollapse);
+      const btn = el.querySelector(".section-toggle-btn");
+      if (btn) btn.setAttribute("aria-label", willCollapse ? "展开文件夹" : "折叠文件夹");
     }
-    refs.collapseAllLabel.textContent = allCollapsed ? "折叠所有文件夹" : "展开所有文件夹";
+    updateCollapseAllLabel();
     saveViewPreferences();
+  }
+
+  function updateCollapseAllLabel() {
+    if (!refs.collapseAllLabel) return;
+    const sections = $$(".section");
+    if (!sections.length) return;
+    const allCollapsed = [...sections].every((el) => el.classList.contains("is-collapsed"));
+    refs.collapseAllLabel.textContent = allCollapsed ? "展开所有文件夹" : "折叠所有文件夹";
   }
 
   function buildBookmark(item, queryTokens = []) {
