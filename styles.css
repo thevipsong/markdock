@@ -3484,11 +3484,7 @@ button, .button, .tab, .bookmark-title { font-weight: 620; }
 .content-caption { font-size: 12px; }
 .content-heading-tools { gap: 7px; }
 .content-quick-filters {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 5px;
-  margin-top: 12px;
+  display: none !important;
 }
 .quick-filter-label {
   margin-right: 3px;

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "栖屿 · 书签工作台",
-  "version": "2.0.265",
+  "version": "2.0.266",
   "minimum_chrome_version": "116",
   "description": "极简文件夹树展示和整理 Chrome 书签，提供暗黑与白色双主题、高清站点图标匹配和失效链接检查。",
   "permissions": [
