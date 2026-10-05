@@ -520,8 +520,8 @@
   function restrictedBookmarkMessage(input) {
     const scheme = String(input || "").match(/^([a-z][a-z0-9+.-]*):/i)?.[1]?.toLowerCase();
     return scheme === "javascript"
-      ? "栖屿不会执行书签脚本。可右键复制网址，再到 Chrome 书签中使用。"
-      : "为安全起见，栖屿不会直接打开此类型网址。可右键复制网址，再到 Chrome 中使用。";
+      ? "MarkDock 不会执行书签脚本。可右键复制网址，再到浏览器书签中使用。"
+      : "为安全起见，MarkDock 不会直接打开此类型网址。可右键复制网址，再到浏览器中使用。";
   }
 
   function bookmarkTitle(input, url) {
@@ -2171,7 +2171,7 @@
         if (event.key === "Enter") explainBlockedOpen(event);
       });
     }
-    link.setAttribute("aria-label", `${item.title}，${item.url}${openableUrl ? "" : "，栖屿不会直接打开此网址"}`);
+    link.setAttribute("aria-label", `${item.title}，${item.url}${openableUrl ? "" : "，MarkDock 不会直接打开此网址"}`);
 
     link.addEventListener("mouseenter", (e) => showBookmarkTooltip(item, link, e.clientX, e.clientY));
     link.addEventListener("mouseleave", scheduleHideBookmarkTooltip);
@@ -3114,7 +3114,7 @@
       const initialImportSnapshot = duplicateSnapshotSignature();
       const text = await file.text();
       const isJson = file.name.toLowerCase().endsWith(".json");
-      const isQidianHtml = !isJson && /<H1\b[^>]*>\s*(?:栖屿|拾页|栖点)书签\s*<\/H1>/i.test(text);
+      const isQidianHtml = !isJson && /<H1\b[^>]*>\s*(?:MarkDock|栖屿|拾页|栖点)书签\s*<\/H1>/i.test(text);
       const chromeItems = EXTENSION_MODE
         ? flattenChromeTree(await chrome.bookmarks.getTree())
         : state.items.filter((item) => item.source === "chrome");
@@ -3258,7 +3258,7 @@
 
       const importWarnings = [];
       if (state.mode === "personal" && localCount) {
-        importWarnings.push(`将当前 ${localCount} 个本地书签替换为文件中的 ${items.length} 个本地书签${matchNote}。栖屿会先下载当前全部书签的 JSON 备份，并要求你确认文件已保存。`);
+        importWarnings.push(`将当前 ${localCount} 个本地书签替换为文件中的 ${items.length} 个本地书签${matchNote}。MarkDock 会先下载当前全部书签的 JSON 备份，并要求你确认文件已保存。`);
       }
       if (skippedImportItems) {
         importWarnings.push(`文件中有 ${skippedImportItems} 条记录无效或使用暂不支持的网址格式，将跳过。`);
@@ -3270,7 +3270,7 @@
         const backupItems = [...chromeItems, ...state.items.filter((item) => item.source !== "chrome")];
         const backupStarted = exportJson(backupItems, { silent: true });
         if (!backupStarted) throw new Error("自动备份下载未能启动，已取消导入");
-        if (!confirm("已发起“栖屿书签.json”下载。请确认备份文件已保存，再继续替换本地书签；取消会保留现有书签。")) {
+        if (!confirm("已发起“MarkDock书签.json”下载。请确认备份文件已保存，再继续替换本地书签；取消会保留现有书签。")) {
           toast("已取消导入，现有书签未更改。");
           return;
         }
@@ -3295,7 +3295,7 @@
         throw new Error("Chrome 正在导入书签，已取消本次导入；请等待 Chrome 完成后重试。");
       }
       if (duplicateSnapshotSignature() !== initialImportSnapshot) {
-        throw new Error("栖屿书签在导入期间发生了变化，已取消导入；其他页面的最新更改已保留，请重新确认后再导入。");
+        throw new Error("MarkDock 书签在导入期间发生了变化，已取消导入；其他页面的最新更改已保留，请重新确认后再导入。");
       }
 
       const previousMode = state.mode;
@@ -3449,8 +3449,8 @@
       '<!DOCTYPE NETSCAPE-Bookmark-file-1>',
       '<!-- This is an automatically generated file. -->',
       '<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">',
-      '<TITLE>栖屿书签</TITLE>',
-      '<H1>栖屿书签</H1>',
+      '<TITLE>MarkDock 书签</TITLE>',
+      '<H1>MarkDock 书签</H1>',
       '<DL><p>'
     ];
     const writeNode = (node, depth) => {
@@ -3471,7 +3471,7 @@
     };
     writeNode(tree, 1);
     lines.push('</DL><p>');
-    download("栖屿书签.html", new Blob([lines.join("\n")], { type: "text/html;charset=utf-8" }));
+    download("MarkDock书签.html", new Blob([lines.join("\n")], { type: "text/html;charset=utf-8" }));
   }
 
   function exportJson(items = state.items, { silent = false } = {}) {
@@ -3484,7 +3484,7 @@
         items
       };
       const data = JSON.stringify(payload, null, 2);
-      return download("栖屿书签.json", new Blob([data], { type: "application/json" }), { silent });
+      return download("MarkDock书签.json", new Blob([data], { type: "application/json" }), { silent });
     } catch (error) {
       if (silent) throw error;
       toast(`导出失败：${error.message || "无法生成 JSON 备份"}`, true);
@@ -4062,7 +4062,7 @@
         item.category = destinationPath[0] || "未分类";
         item.group = destinationPath.length > 1 ? destinationPath.slice(1).join(" / ") : "常用书签";
       }
-      if (localPrevious.length && !persist()) throw new Error("浏览器存储空间不足，栖屿分组未能保存");
+      if (localPrevious.length && !persist()) throw new Error("浏览器存储空间不足，MarkDock 分组未能保存");
       if (chromeItems.length) chromeSyncSucceeded = await syncChromeBookmarks() === true;
       expandNavigationPath(destinationPath);
       state.movingId = null;
@@ -4533,7 +4533,7 @@
       toast("书签已更新，没有需要合并的重复项。", false);
       return;
     }
-    if (!confirm(`准备删除 ${removeCount} 个重复书签，并为每组保留一个。栖屿会先发起 JSON 备份下载，再请你确认文件已保存。继续下载备份？`)) return;
+    if (!confirm(`准备删除 ${removeCount} 个重复书签，并为每组保留一个。MarkDock 会先发起 JSON 备份下载，再请你确认文件已保存。继续下载备份？`)) return;
 
     // Keep the exported backup and the later delete plan tied to the same
     // authoritative Chrome and local-bookmark snapshot.
@@ -4548,7 +4548,7 @@
       toast(`备份导出失败，已取消合并：${error.message || "无法创建下载文件"}`, true);
       return;
     }
-    if (!confirm("已发起“栖屿书签.json”下载。请先确认文件已保存，再继续删除重复书签；取消则保留所有书签。")) {
+    if (!confirm("已发起“MarkDock书签.json”下载。请先确认文件已保存，再继续删除重复书签；取消则保留所有书签。")) {
       toast("已取消合并，书签未更改。");
       return;
     }
@@ -4612,7 +4612,7 @@
     }
     if (duplicateSnapshotSignature() !== backupSnapshot) {
       showDuplicates();
-      toast("合并已取消：备份确认期间栖屿书签再次变化，最新更改已保留。请重新检查重复项。", true);
+      toast("合并已取消：备份确认期间书签再次变化，最新更改已保留。请重新检查重复项。", true);
       return;
     }
 
@@ -5373,12 +5373,12 @@
         const restrictedCount = node.items.length - items.length;
         if (!items.length) {
           toast(restrictedCount
-            ? "此文件夹只有特殊网址；栖屿不会直接打开这类网址。"
+            ? "此文件夹只有特殊网址；MarkDock 不会直接打开这类网址。"
             : "此文件夹没有可打开的书签");
           if (folderReturnFocus?.isConnected) folderReturnFocus.focus({ preventScroll: true });
           return;
         }
-        const restrictedNote = restrictedCount ? `，另有 ${restrictedCount} 个特殊网址不会从栖屿打开` : "";
+        const restrictedNote = restrictedCount ? `，另有 ${restrictedCount} 个特殊网址不会从 MarkDock 打开` : "";
         if (items.length > 1 && !confirm(`将在新标签页打开“${node.path.at(-1)}”中的 ${items.length} 个书签${restrictedNote}，继续吗？`)) {
           if (folderReturnFocus?.isConnected) folderReturnFocus.focus({ preventScroll: true });
           return;
@@ -5698,7 +5698,7 @@
         saved = JSON.parse(event.newValue);
         if (!Array.isArray(saved?.items)) throw new Error("书签数据格式无效");
       } catch {
-        toast("另一栖屿页面的书签数据无法读取，当前页面未覆盖现有内容。", true);
+        toast("另一 MarkDock 页面的书签数据无法读取，当前页面未覆盖现有内容。", true);
         return;
       }
     }

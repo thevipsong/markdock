@@ -7,7 +7,7 @@ chrome.action.onClicked.addListener((clickedTab) => {
   // Keep lookup/create atomic per Chrome profile so rapid toolbar clicks do
   // not race and open duplicate gallery tabs.
   const opening = openGallery(incognito, clickedTab?.windowId)
-    .catch((error) => console.error("无法打开栖屿书签页", error))
+    .catch((error) => console.error("无法打开 MarkDock 书签页", error))
     .finally(() => openingProfiles.delete(incognito));
   openingProfiles.set(incognito, opening);
   return opening;
