@@ -1,4 +1,24 @@
-.icon-cache/
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+.icon-cache/
+
+# Operating System
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDEs & Editors
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Logs & Temp
+*.log
+*.tmp

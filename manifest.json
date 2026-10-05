@@ -1,12 +1,19 @@
 {
   "manifest_version": 3,
-  "name": "栖点 · 我的书签",
-  "version": "2.0.0",
-  "description": "极简文件夹树展示和整理 Chrome 书签，深度复刻幻梦（Mirage）8套专属皮肤、双玻璃材质、品牌强调色、每日必应壁纸与失效链接检查。",
-  "permissions": ["bookmarks"],
-  "optional_host_permissions": ["http://*/*", "https://*/*"],
+  "name": "栖屿 · 书签工作台",
+  "version": "2.0.265",
+  "minimum_chrome_version": "116",
+  "description": "极简文件夹树展示和整理 Chrome 书签，提供暗黑与白色双主题、高清站点图标匹配和失效链接检查。",
+  "permissions": [
+    "bookmarks",
+    "favicon"
+  ],
+  "optional_host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ],
   "action": {
-    "default_title": "打开栖点书签"
+    "default_title": "打开栖屿"
   },
   "background": {
     "service_worker": "background.js"
