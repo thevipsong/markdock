@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "MarkDock 书签坞",
-  "version": "2.0.267",
+  "version": "2.0.268",
   "minimum_chrome_version": "116",
   "description": "极简现代网格书签工作台，提供暗黑与白色双主题、高清站点图标匹配和失效链接检查。",
   "permissions": [

@@ -10,7 +10,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Manifest-V3-4285F4?logo=googlechrome&logoColor=white" alt="Manifest V3" />
-  <img src="https://img.shields.io/badge/Version-2.0.267-indigo" alt="Version" />
+  <img src="https://img.shields.io/badge/Version-2.0.268-indigo" alt="Version" />
   <img src="https://img.shields.io/badge/License-MIT-emerald.svg" alt="License" />
 </p>
 
