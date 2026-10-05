@@ -35,7 +35,7 @@
 
         <div class="sidebar-footer">
           <span class="sidebar-footer-mark"><span></span></span>
-          <span id="sidebarStorageStatus">Chrome 同步状态见顶栏</span>
+          <span id="sidebarStorageStatus">实时同步状态见顶栏</span>
         </div>
       </aside>
 
@@ -83,7 +83,7 @@
             <div class="actions-menu" id="actionsMenu" hidden>
               <button id="syncNowButton" type="button" hidden>
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M5.6 9A7 7 0 0 1 18 6l2 2M4 16l2 2a7 7 0 0 0 12.4-3"/></svg>
-                重新同步 Chrome 书签
+                重新同步书签
               </button>
               <div class="menu-divider" data-menu-kind="bookmark"></div>
               <button id="importButton" type="button">
@@ -204,7 +204,7 @@
         </label>
 
         <div class="field" id="chromeFolderSelectWrap" hidden>
-          <label for="chromeFolderSelect">Chrome 目标文件夹</label>
+          <label for="chromeFolderSelect">目标文件夹</label>
           <select id="chromeFolderSelect"></select>
         </div>
 
@@ -225,7 +225,7 @@
           <span>加入收藏</span>
         </label>
 
-        <p class="dialog-hint" id="chromeEditHint" hidden>修改将同步写回 Chrome 书签。</p>
+        <p class="dialog-hint" id="chromeEditHint" hidden>修改将自动同步写回浏览器。</p>
         <p class="form-error" id="formError" role="alert" hidden></p>
 
         <div class="dialog-actions">
@@ -246,7 +246,7 @@
         </div>
         <label class="field"><span>目标分组</span><select id="moveTarget" required></select></label>
         <label class="field"><span>新建子分组（可选）</span><input id="newGroupName" maxlength="80" placeholder="留空则直接移入选中的分组" autocomplete="off" /></label>
-        <p class="dialog-hint">Chrome 书签的移动会同步写回 Chrome。</p>
+        <p class="dialog-hint">书签移动将自动同步写回浏览器。</p>
         <div class="dialog-actions">
           <span class="dialog-spacer"></span>
           <button class="button button-quiet" type="button" data-close-dialog="moveDialog">取消</button>

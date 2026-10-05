@@ -8,6 +8,9 @@
   const SIDEBAR_COLLAPSED_KEY = "qidian-sidebar-collapsed-v1";
   const SOURCE_FILTER_KEY = "qidian-source-filter-v1";
   const NAV_TREE_KEY = "qidian-expanded-navigation-v1";
+  const IS_EDGE = /\bEdg\//i.test(navigator.userAgent);
+  const BROWSER_NAME = IS_EDGE ? "Edge" : (/\bChrome\//i.test(navigator.userAgent) ? "Chrome" : "浏览器");
+  const BOOKMARK_TERM = IS_EDGE ? "收藏夹" : "书签";
   const PAGE_SIZE = 180;
   const MAX_ICON_DATA_URL_CHARS = 128_000;
   const MAX_IMPORT_ICON_CHARS = 750_000;
@@ -2010,7 +2013,7 @@
     refs.banner.hidden = state.mode !== "demo";
     if (refs.sidebarStorageStatus) {
       refs.sidebarStorageStatus.textContent = EXTENSION_MODE
-        ? "Chrome 书签实时同步 · 可手动重试"
+        ? `${BOOKMARK_TERM}实时同步 · 可手动重试`
         : state.mode === "demo"
           ? "示例模式 · 导入或添加以保存"
           : "本地网页模式 · 数据保存在浏览器";
@@ -2022,16 +2025,16 @@
     if (EXTENSION_MODE) {
       refs.syncBadge.dataset.status = state.chromeSyncStatus;
       refs.syncBadgeText.textContent = state.chromeSyncStatus === "ready"
-        ? "Chrome 已同步"
+        ? "已同步"
         : (state.chromeSyncStatus === "error"
-          ? "Chrome 同步异常"
+          ? "同步异常"
           : state.chromeSyncStatus === "importing"
-            ? "正在导入 Chrome"
-            : "正在读取 Chrome");
+            ? "正在导入"
+            : "正在同步");
       refs.count.textContent = state.chromeSyncStatus === "error"
-        ? "● Chrome 同步异常"
+        ? "● 同步异常"
         : state.chromeSyncStatus === "importing"
-          ? "● 正在同步 Chrome 书签"
+          ? `● 正在同步${BOOKMARK_TERM}`
           : "● 实时同步已就绪";
     } else {
       refs.count.textContent = state.mode === "demo"
@@ -2420,18 +2423,18 @@
     button.className = "button button-primary";
 
     if (EXTENSION_MODE && state.chromeSyncStatus === "importing") {
-      heading.textContent = "正在导入 Chrome 书签";
-      paragraph.textContent = "当前列表将在 Chrome 导入完成后自动更新。";
+      heading.textContent = `正在导入${BOOKMARK_TERM}`;
+      paragraph.textContent = "当前列表将在导入完成后自动更新。";
       button.textContent = "等待导入完成";
       button.disabled = true;
     } else if (EXTENSION_MODE && state.chromeSyncStatus === "loading") {
-      heading.textContent = "正在读取 Chrome 书签";
+      heading.textContent = `正在读取${BOOKMARK_TERM}`;
       paragraph.textContent = "首次读取或包含大量书签时可能需要几秒钟。";
-      button.textContent = "添加本地书签";
-      button.addEventListener("click", () => openDialog(null, "local"));
+      button.textContent = `添加${BOOKMARK_TERM}`;
+      button.addEventListener("click", () => openDialog());
     } else if (EXTENSION_MODE && state.chromeSyncStatus === "error") {
-      heading.textContent = "Chrome 书签读取失败";
-      paragraph.textContent = "请在扩展管理中确认已授予书签访问权限，然后点击重试。";
+      heading.textContent = `${BOOKMARK_TERM}读取失败`;
+      paragraph.textContent = "请在扩展管理中确认已授予访问权限，然后点击重试。";
       button.textContent = "重新同步";
       button.addEventListener("click", syncChromeBookmarks);
     } else if (state.query) {
@@ -2458,7 +2461,7 @@
     } else {
       heading.textContent = "给书签一个清爽的归宿";
       paragraph.textContent = EXTENSION_MODE
-        ? "Chrome 中还没有书签。你可以直接在此添加书签，也可以导入以前的备份。"
+        ? `浏览器中还没有${BOOKMARK_TERM}。你可以直接在此添加，也可以导入以前的备份。`
         : "导入浏览器导出的 HTML 书签文件，或手动添加第一个书签。";
       button.textContent = EXTENSION_MODE ? "添加书签" : "导入书签";
       button.addEventListener("click", EXTENSION_MODE ? () => openDialog() : chooseFile);
@@ -3820,10 +3823,10 @@
   function chromeSyncWarning(syncSucceeded, separator = "；") {
     if (syncSucceeded === true) return "";
     if (syncSucceeded === false) {
-      return `${separator}页面列表同步失败，请从右上角“⋯”菜单选择“重新同步 Chrome 书签”`;
+      return `${separator}页面列表同步失败，请从右上角“⋯”菜单选择“重新同步${BOOKMARK_TERM}”`;
     }
     return chromeBookmarkImporting
-      ? `${separator}Chrome 正在导入，页面列表会在导入结束后自动更新`
+      ? `${separator}正在导入，页面列表会在导入结束后自动更新`
       : `${separator}页面列表尚未确认同步完成，请稍后从右上角“⋯”菜单重新同步`;
   }
 
@@ -4180,11 +4183,7 @@
       : state.renamingSection.path.at(-1);
     refs.renameError.hidden = true;
     refs.renameError.textContent = "";
-    refs.renameHint.textContent = renameChrome && renameLocal
-      ? "将重命名 Chrome 文件夹，并同步更新此路径下的本地书签。"
-      : renameChrome
-        ? "重命名将同步写回 Chrome 文件夹。"
-        : "仅重命名此路径下的本地书签分组。";
+    refs.renameHint.textContent = "重命名将自动同步写回浏览器文件夹。";
     refs.renameDialog.showModal();
     refs.renameInput.focus();
     refs.renameInput.select();
@@ -5241,9 +5240,9 @@
     if (!EXTENSION_MODE) return;
     closeActionsMenu({ restoreFocus: true });
     const result = await syncChromeBookmarks();
-    if (result === true) toast("Chrome 书签已重新同步");
-    else if (result === false) toast("Chrome 书签同步失败；请检查扩展权限后重试。", true);
-    else toast("Chrome 正在导入或同步，完成后页面会自动更新。");
+    if (result === true) toast(`${BOOKMARK_TERM}已重新同步`);
+    else if (result === false) toast(`${BOOKMARK_TERM}同步失败；请检查扩展权限后重试。`, true);
+    else toast("正在导入或同步，完成后页面会自动更新。");
   });
 
   // Shortcuts dialog
