@@ -175,7 +175,7 @@
   const savedSortMode = readPreference(SORT_KEY, "default");
   const savedDensityMode = readPreference(DENSITY_KEY, "comfortable");
   const savedSidebarCollapsed = readPreference(SIDEBAR_COLLAPSED_KEY, "false") === "true";
-  const savedSourceFilter = readPreference(SOURCE_FILTER_KEY, "all");
+  try { localStorage.removeItem(SOURCE_FILTER_KEY); } catch { /* ignore */ }
 
   let savedNavigation = { expanded: [], collapsed: [] };
   try {
@@ -203,7 +203,7 @@
     viewMode: savedViewMode === "list" ? "list" : "grid",
     densityMode: savedDensityMode === "compact" ? "compact" : "comfortable",
     sidebarCollapsed: savedSidebarCollapsed,
-    quickSourceFilter: ["all", "chrome", "local"].includes(savedSourceFilter) ? savedSourceFilter : "all",
+    quickSourceFilter: "all",
     selectionMode: false,
     selectedBookmarkIds: new Set(),
     movingIds: [],
@@ -416,7 +416,6 @@
       localStorage.setItem(SORT_KEY, state.sortMode);
       localStorage.setItem(DENSITY_KEY, state.densityMode);
       localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(state.sidebarCollapsed));
-      localStorage.setItem(SOURCE_FILTER_KEY, state.quickSourceFilter);
       localStorage.setItem(NAV_TREE_KEY, JSON.stringify({
         expanded: [...state.expandedNavNodes],
         collapsed: [...state.collapsedNavNodes]
@@ -1499,10 +1498,6 @@
       return true;
     });
 
-    if (state.quickSourceFilter !== "all") {
-      items = items.filter((item) => item.source === state.quickSourceFilter);
-    }
-
     if (tokens.length) {
       items = items.filter((item) => {
         const titleLower = item.title.toLocaleLowerCase();
@@ -1702,8 +1697,7 @@
     const items = selectedBookmarks();
     if (!items.length) return;
     const chromeItems = items.filter((item) => item.source === "chrome");
-    const chromeNote = chromeItems.length ? "所选 Chrome 书签也会从 Chrome 中删除。" : "此操作只会删除栖屿本地书签。";
-    if (!confirm(`确定删除已选的 ${items.length} 个书签吗？${chromeNote}`)) return;
+    if (!confirm(`确定删除已选的 ${items.length} 个书签吗？`)) return;
     for (const item of chromeItems) {
       if (!(await chromeBookmarkMatchesCurrent(item))) {
         toast(await refreshAfterChromeConflict(), true);
@@ -1799,44 +1793,6 @@
       caption.textContent = `${count} 个网址，随时回到需要的页面`;
     }
     if (copy.childElementCount === 0) copy.append(title, caption);
-
-    const quickFilters = document.createElement("div");
-    quickFilters.className = "content-quick-filters";
-    quickFilters.setAttribute("role", "group");
-    quickFilters.setAttribute("aria-label", "按书签来源筛选");
-    const sourceCaption = document.createElement("span");
-    sourceCaption.className = "quick-filter-label";
-    sourceCaption.textContent = "来源";
-    quickFilters.append(sourceCaption);
-    const selectedPath = state.query.trim() ? null : selectedNavigationPath();
-    const scopeItems = state.query.trim()
-      ? state.items
-      : state.items.filter((item) => {
-        if (state.activeTab === "favorites") return item.favorite;
-        if (!selectedPath?.length) return true;
-        const path = getNavigationPath(item);
-        return selectedPath.every((part, index) => path[index] === part);
-      });
-    const sourceFilters = [
-      { id: "all", label: "全部", count: scopeItems.length },
-      { id: "chrome", label: "Chrome", count: scopeItems.filter((item) => item.source === "chrome").length },
-      { id: "local", label: "栖屿本地", count: scopeItems.filter((item) => item.source !== "chrome").length }
-    ];
-    for (const filter of sourceFilters) {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = `quick-filter-chip${state.quickSourceFilter === filter.id ? " is-active" : ""}`;
-      button.setAttribute("aria-pressed", String(state.quickSourceFilter === filter.id));
-      button.textContent = `${filter.label} ${filter.count}`;
-      button.addEventListener("click", () => {
-        state.quickSourceFilter = filter.id;
-        state.limit = PAGE_SIZE;
-        saveViewPreferences();
-        render({ refreshNavigation: false });
-      });
-      quickFilters.append(button);
-    }
-    copy.append(quickFilters);
 
     const tools = document.createElement("div");
     tools.className = "content-heading-tools";
@@ -2115,21 +2071,12 @@
       }
     }
     const visible = filtered.slice(0, state.limit);
-    let hasChromeSource = false;
-    let hasLocalSource = false;
-    for (const item of filtered) {
-      if (item.source === "chrome") hasChromeSource = true;
-      else hasLocalSource = true;
-      if (hasChromeSource && hasLocalSource) break;
-    }
-    document.documentElement.dataset.mixedSources = String(
-      hasChromeSource && hasLocalSource
-    );
+    document.documentElement.dataset.mixedSources = "false";
     refs.content.replaceChildren();
     refs.content.dataset.viewMode = state.viewMode;
     refs.content.dataset.densityMode = state.densityMode;
     refs.content.dataset.selectionMode = String(state.selectionMode);
-    refs.content.dataset.sourceFilter = state.quickSourceFilter;
+    refs.content.dataset.sourceFilter = "all";
     refs.content.dataset.scope = state.query.trim()
       ? "search"
       : (selectedNavigationPath()?.length ? "folder" : state.activeTab === "favorites" ? "favorites" : "all");
@@ -2224,9 +2171,7 @@
         if (event.key === "Enter") explainBlockedOpen(event);
       });
     }
-    const showSourceTag = document.documentElement.dataset.mixedSources === "true";
-    const sourceLabel = item.source === "chrome" ? "Chrome" : "本地";
-    link.setAttribute("aria-label", `${item.title}，${item.url}${openableUrl ? "" : "，栖屿不会直接打开此网址"}${showSourceTag ? `，来源：${sourceLabel}` : ""}`);
+    link.setAttribute("aria-label", `${item.title}，${item.url}${openableUrl ? "" : "，栖屿不会直接打开此网址"}`);
 
     link.addEventListener("mouseenter", (e) => showBookmarkTooltip(item, link, e.clientX, e.clientY));
     link.addEventListener("mouseleave", scheduleHideBookmarkTooltip);
@@ -2366,14 +2311,6 @@
       : restrictedBookmarkLabel(item.url), queryTokens);
     domainLine.append(domain);
 
-    if (showSourceTag) {
-      const source = document.createElement("span");
-      source.className = "bookmark-source-tag";
-      source.setAttribute("aria-hidden", "true");
-      source.textContent = sourceLabel;
-      domainLine.append(source);
-    }
-
     const navPath = getNavigationPath(item);
     if (navPath.length > 0) {
       const context = document.createElement("span");
@@ -2499,24 +2436,12 @@
       button.addEventListener("click", syncChromeBookmarks);
     } else if (state.query) {
       heading.textContent = "没有找到匹配的书签";
-      paragraph.textContent = state.quickSourceFilter === "all"
-        ? "请尝试缩短搜索词或检查拼写，也可点击下方按钮清空搜索。"
-        : `当前仅搜索${state.quickSourceFilter === "chrome" ? "Chrome" : "栖屿本地"}书签；可以清除搜索条件或切换来源。`;
+      paragraph.textContent = "请尝试缩短搜索词或检查拼写，也可点击下方按钮清空搜索。";
       button.textContent = "清空搜索条件";
       button.addEventListener("click", () => {
         refs.search.value = "";
         state.query = "";
         refs.searchClear.hidden = true;
-        render({ refreshNavigation: false });
-      });
-    } else if (state.quickSourceFilter !== "all") {
-      const sourceLabel = state.quickSourceFilter === "chrome" ? "Chrome" : "栖屿本地";
-      heading.textContent = `这里还没有${sourceLabel}书签`;
-      paragraph.textContent = "切换来源筛选，或在其他来源中添加书签。";
-      button.textContent = "显示全部来源";
-      button.addEventListener("click", () => {
-        state.quickSourceFilter = "all";
-        saveViewPreferences();
         render({ refreshNavigation: false });
       });
     } else if (state.activeTab === "favorites") {
@@ -2676,9 +2601,10 @@
     } else {
       // Adding new bookmark
       if (EXTENSION_MODE) {
-        refs.targetDestWrap.hidden = false;
-        state.targetDest = initialDestination === "local" ? "local" : "chrome";
-        updateSaveDestToggle();
+        refs.targetDestWrap.hidden = true;
+        state.targetDest = "chrome";
+        refs.chromeFolderWrap.hidden = false;
+        refs.localOrganizeFields.hidden = true;
         const selectedPath = selectedFolderPath;
         let selectedFolderId = "";
         if (selectedPath?.length) {
@@ -4060,9 +3986,7 @@
     }
     if (!refs.moveTarget.options.length) refs.moveTarget.add(new Option("未分类", JSON.stringify(["未分类"]), true, true));
     const hint = refs.moveDialog.querySelector(".dialog-hint");
-    if (hint) hint.textContent = items.some((entry) => entry.source === "chrome")
-      ? "Chrome 书签移动后会同步写回 Chrome；本地书签只更新栖屿分组。"
-      : "移动只会调整栖屿中的文件夹位置。";
+    if (hint) hint.textContent = "书签移动后将自动同步更新。";
     refs.moveDialog.showModal();
     refs.moveTarget.focus();
   }
