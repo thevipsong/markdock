@@ -18,6 +18,7 @@
     <div class="backdrop" id="backdrop" aria-hidden="true">
       <div class="backdrop-image" id="backdropImage"></div>
       <div class="backdrop-overlay" id="backdropOverlay"></div>
+      <div class="backdrop-texture" id="backdropTexture"></div>
     </div>
 
     <main class="app-window">
@@ -405,65 +406,148 @@
       <section class="appearance-wallpaper" aria-labelledby="appearanceWallpaperTitle">
         <div class="appearance-section-heading">
           <div>
-            <h3 id="appearanceWallpaperTitle">背景</h3>
-            <p>背景效果与黑白主题分别保存</p>
+            <h3 id="appearanceWallpaperTitle">背景与质感</h3>
+            <p>个性化背景效果，支持双主题独立记忆与即时生效</p>
           </div>
         </div>
 
         <div class="wallpaper-mode-grid" role="group" aria-label="选择背景类型">
           <button class="wallpaper-mode-button" type="button" data-wallpaper-choice="diffuse" aria-pressed="false">
             <span class="wallpaper-mode-swatch wallpaper-swatch-default" aria-hidden="true"></span>
-            <span>默认</span>
+            <span>默认微光</span>
           </button>
           <button class="wallpaper-mode-button" type="button" data-wallpaper-choice="gradient" aria-pressed="false">
             <span class="wallpaper-mode-swatch wallpaper-swatch-gradient" aria-hidden="true"></span>
-            <span>渐变</span>
+            <span>流光渐变</span>
           </button>
           <button class="wallpaper-mode-button" type="button" data-wallpaper-choice="solid" aria-pressed="false">
             <span class="wallpaper-mode-swatch wallpaper-swatch-solid" aria-hidden="true"></span>
-            <span>纯色</span>
+            <span>质感纯色</span>
           </button>
           <button class="wallpaper-mode-button" type="button" data-wallpaper-choice="custom" aria-pressed="false">
             <span class="wallpaper-mode-swatch wallpaper-swatch-image" aria-hidden="true"></span>
-            <span>图片</span>
+            <span>精选壁纸</span>
           </button>
         </div>
 
         <div class="wallpaper-options" id="wallpaperOptions" hidden>
+          <!-- 1. 渐变预设 -->
           <div class="wallpaper-option-row" id="wallpaperGradientOptions" hidden>
-            <span class="wallpaper-option-label">渐变预设</span>
+            <span class="wallpaper-option-label">渐变方案</span>
             <div class="wallpaper-gradient-options" role="group" aria-label="渐变背景">
               <button class="wallpaper-gradient-button" type="button" data-wallpaper-gradient="slate" aria-label="石墨灰" aria-pressed="false"><span class="gradient-swatch gradient-slate"></span><span>石墨</span></button>
               <button class="wallpaper-gradient-button" type="button" data-wallpaper-gradient="coast" aria-label="海岸蓝" aria-pressed="false"><span class="gradient-swatch gradient-coast"></span><span>海岸</span></button>
               <button class="wallpaper-gradient-button" type="button" data-wallpaper-gradient="plum" aria-label="暮紫" aria-pressed="false"><span class="gradient-swatch gradient-plum"></span><span>暮紫</span></button>
+              <button class="wallpaper-gradient-button" type="button" data-wallpaper-gradient="aurora" aria-label="极光绿" aria-pressed="false"><span class="gradient-swatch gradient-aurora"></span><span>极光</span></button>
+              <button class="wallpaper-gradient-button" type="button" data-wallpaper-gradient="sunset" aria-label="落日珊瑚" aria-pressed="false"><span class="gradient-swatch gradient-sunset"></span><span>落日</span></button>
+              <button class="wallpaper-gradient-button" type="button" data-wallpaper-gradient="abyss" aria-label="深蓝星河" aria-pressed="false"><span class="gradient-swatch gradient-abyss"></span><span>深蓝</span></button>
             </div>
           </div>
 
-          <div class="wallpaper-option-row" id="wallpaperSolidOptions" hidden>
-            <label class="wallpaper-option-label" for="wallpaperSolidColor">背景颜色</label>
-            <input id="wallpaperSolidColor" class="wallpaper-color-input" type="color" value="#17191d" aria-label="选择纯色背景" />
-          </div>
-
-          <div class="wallpaper-option-row wallpaper-image-row" id="wallpaperImageOptions" hidden>
-            <div>
-              <span class="wallpaper-option-label">自定义图片</span>
-              <span class="wallpaper-status" id="wallpaperStatus" role="status">图片保存在此浏览器中。</span>
+          <!-- 2. 纯色快捷色卡 -->
+          <div class="wallpaper-solid-section" id="wallpaperSolidOptions" hidden>
+            <div class="wallpaper-solid-heading">
+              <span class="wallpaper-option-label">精选色卡</span>
+              <div class="wallpaper-custom-picker-wrap">
+                <label for="wallpaperSolidColor" class="wallpaper-picker-label">自定义取色</label>
+                <input id="wallpaperSolidColor" class="wallpaper-color-input" type="color" value="#17191d" aria-label="选择纯色背景" />
+              </div>
             </div>
-            <button class="button wallpaper-upload-button" id="uploadWallpaperButton" type="button">选择图片</button>
-            <input id="wallpaperFileInput" type="file" accept="image/*" hidden />
+            <div class="wallpaper-solid-swatches" id="wallpaperSolidSwatches" role="group" aria-label="常用纯色色卡"></div>
           </div>
 
+          <!-- 3. 图片与壁纸画廊 (精选/必应/上传) -->
+          <div class="wallpaper-image-section" id="wallpaperImageOptions" hidden>
+            <div class="wallpaper-source-tabs" role="tablist" aria-label="壁纸来源">
+              <button class="wallpaper-source-tab is-active" type="button" data-image-source="curated" role="tab" aria-selected="true">精选画廊</button>
+              <button class="wallpaper-source-tab" type="button" data-image-source="bing" role="tab" aria-selected="false">每日必应</button>
+              <button class="wallpaper-source-tab" type="button" data-image-source="upload" role="tab" aria-selected="false">本地上传</button>
+            </div>
+
+            <!-- 精选画廊列表 -->
+            <div class="curated-wallpapers-grid" id="curatedWallpapersGrid">
+              <button class="curated-wallpaper-item is-active" type="button" data-curated-id="aurora" title="极光流动">
+                <span class="curated-thumb" style="background-image: url('assets/wallpapers/aurora-flow.svg');"></span>
+                <span>极光流动</span>
+              </button>
+              <button class="curated-wallpaper-item" type="button" data-curated-id="cosmic" title="深邃星云">
+                <span class="curated-thumb" style="background-image: url('assets/wallpapers/cosmic-glow.svg');"></span>
+                <span>深邃星云</span>
+              </button>
+              <button class="curated-wallpaper-item" type="button" data-curated-id="zen" title="静谧远山">
+                <span class="curated-thumb" style="background-image: url('assets/wallpapers/zen-mountain.svg');"></span>
+                <span>静谧远山</span>
+              </button>
+              <button class="curated-wallpaper-item" type="button" data-curated-id="dusk" title="暮光落霞">
+                <span class="curated-thumb" style="background-image: url('assets/wallpapers/warm-dusk.svg');"></span>
+                <span>暮光落霞</span>
+              </button>
+            </div>
+
+            <!-- 每日必应卡片 -->
+            <div class="bing-wallpaper-card" id="bingWallpaperCard" hidden>
+              <div class="bing-preview-box">
+                <div class="bing-preview-img" id="bingPreviewImg"></div>
+                <div class="bing-info">
+                  <strong id="bingTitle">今日必应壁纸</strong>
+                  <span id="bingCopyright" class="bing-copyright">每日自动更新微软 4K/1080P 风景大片</span>
+                </div>
+              </div>
+              <button class="button button-sm button-secondary" id="refreshBingButton" type="button">🔄 刷新今日壁纸</button>
+            </div>
+
+            <!-- 自定义上传卡片 -->
+            <div class="custom-upload-box" id="customUploadBox" hidden>
+              <div class="custom-preview-row">
+                <div class="custom-thumb" id="customWallpaperThumb" aria-hidden="true"></div>
+                <div class="custom-thumb-meta">
+                  <span class="custom-thumb-title">当前自定义图片</span>
+                  <span class="wallpaper-status" id="wallpaperStatus" role="status">图片已安全保存在本地浏览器。</span>
+                </div>
+              </div>
+              <div class="custom-upload-actions">
+                <button class="button wallpaper-upload-button" id="uploadWallpaperButton" type="button">选择本地图片</button>
+                <button class="button button-ghost" id="removeWallpaperButton" type="button" hidden>移除图片</button>
+                <input id="wallpaperFileInput" type="file" accept="image/*" hidden />
+              </div>
+            </div>
+          </div>
+
+          <!-- 4. 画面微调 (模糊与暗角遮罩) -->
           <div class="wallpaper-adjustments" id="wallpaperAdjustments" hidden>
             <label class="wallpaper-range-row" id="wallpaperBlurRow" for="wallpaperBlurRange">
               <span>模糊</span>
-              <input id="wallpaperBlurRange" type="range" min="0" max="24" step="1" value="10" />
+              <input id="wallpaperBlurRange" type="range" min="0" max="28" step="1" value="10" />
               <output id="wallpaperBlurValue" for="wallpaperBlurRange">10 px</output>
             </label>
             <label class="wallpaper-range-row" for="wallpaperOverlayRange">
               <span>遮罩</span>
-              <input id="wallpaperOverlayRange" type="range" min="0" max="70" step="1" value="24" />
+              <input id="wallpaperOverlayRange" type="range" min="0" max="75" step="1" value="24" />
               <output id="wallpaperOverlayValue" for="wallpaperOverlayRange">24%</output>
             </label>
+          </div>
+
+          <!-- 5. 高级质感扩展 (点阵网格与卡片毛玻璃) -->
+          <div class="wallpaper-extra-effects" id="wallpaperExtraEffects">
+            <div class="appearance-switch-row">
+              <div class="switch-meta">
+                <strong>微质感点阵 (Dot Grid)</strong>
+                <small>在背景表层叠加细腻科技网格微粒</small>
+              </div>
+              <button type="button" class="appearance-toggle-switch" id="toggleDotGrid" role="switch" aria-checked="false" aria-label="微质感点阵开关">
+                <span class="toggle-knob"></span>
+              </button>
+            </div>
+
+            <div class="appearance-switch-row">
+              <div class="switch-meta">
+                <strong>卡片毛玻璃通透 (Frosted Glass)</strong>
+                <small>书签卡片半透明磨砂毛玻璃浮雕质感</small>
+              </div>
+              <button type="button" class="appearance-toggle-switch" id="toggleCardGlass" role="switch" aria-checked="false" aria-label="卡片毛玻璃开关">
+                <span class="toggle-knob"></span>
+              </button>
+            </div>
           </div>
         </div>
       </section>

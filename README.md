@@ -10,7 +10,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Manifest-V3-4285F4?logo=googlechrome&logoColor=white" alt="Manifest V3" />
-  <img src="https://img.shields.io/badge/Version-2.1.2-indigo" alt="Version" />
+  <img src="https://img.shields.io/badge/Version-2.2.0-indigo" alt="Version" />
   <img src="https://img.shields.io/badge/License-MIT-emerald.svg" alt="License" />
 </p>
 
@@ -24,10 +24,10 @@
 
 ## ✨ 核心特性
 
-- 🎨 **极简现代视觉**
+- 🎨 **极简现代视觉与沉浸背景**
   - **规整网格**：4 列固定响应式 CSS Grid 排列，卡片高度标准化，告别拉伸变形。
   - **微质感轻阴影**：去除去繁琐描边，以悬停微浮雕投影（Elevation）打造轻盈质感。
-  - **双主题与多材质**：暗黑 / 纯白双主题，支持多款弥散渐变、纯色与本地壁纸背景。
+  - **沉浸背景与高级质感系统**：暗黑 / 纯白双主题独立记忆；内置 6 套高级空间渐变、12 款质感纯色快捷卡、精选矢量艺术壁纸库、微软 Bing 每日 4K 高清壁纸自动同步；支持微质感点阵网格与卡片毛玻璃通透浮雕质感。
 - 🔄 **Chromium 书签自动双向同步**
   - 深度集成浏览器原生 Bookmarks API，增删改移实时自动写回 Chrome / Edge。
   - 统一数据源，告别多来源切换困扰，打开即是最新收藏夹。

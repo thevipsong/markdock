@@ -1,5 +1,7 @@
 /**
- * MarkDock 外观设置：保留两款界面主题，并让背景预设独立保存。
+ * MarkDock 外观与背景系统 2.2
+ * 支持双主题、6 款多色空间渐变、12 款质感纯色色卡、精选矢量艺术壁纸、
+ * 每日必应 4K 壁纸自动同步、自定义图片存储，以及微质感点阵网格与卡片毛玻璃通透质感。
  */
 (() => {
   "use strict";
@@ -7,14 +9,13 @@
   const SETTINGS_KEY = "qidian-skin-settings-v2";
   const THEME_KEY = "qidian-theme-v1";
   const LEGACY_APPEARANCE_KEY = "qidian-appearance-v1";
+  const BING_CACHE_KEY = "markdock-bing-wallpaper-cache";
   const root = document.documentElement;
-  // theme-init.js may already have restored an IndexedDB image before this
-  // deferred script runs. Keep that CSS URL as a fallback until our own read
-  // creates an object URL; otherwise the first applyTheme() removes it and
-  // briefly exposes the plain background on every refresh.
+
   const bootstrapWallpaperStyle = root.style.getPropertyValue("--custom-wallpaper-url");
   const themes = new Set(["dark", "light"]);
   const modes = new Set(["diffuse", "gradient", "solid", "custom"]);
+
   const gradients = {
     slate: {
       dark: "radial-gradient(1000px 640px at 85% -12%, rgba(90, 101, 118, .34), transparent 68%), linear-gradient(155deg, #171a20 0%, #20242b 52%, #111317 100%)",
@@ -27,19 +28,66 @@
     plum: {
       dark: "radial-gradient(940px 660px at 82% -12%, rgba(116, 91, 135, .30), transparent 67%), linear-gradient(155deg, #201d24 0%, #29242e 52%, #141316 100%)",
       light: "radial-gradient(940px 660px at 82% -12%, rgba(142, 118, 154, .13), transparent 67%), linear-gradient(155deg, #f8f6f9 0%, #f0edf3 58%, #e8e3eb 100%)"
+    },
+    aurora: {
+      dark: "radial-gradient(1100px 700px at 75% -10%, rgba(16, 185, 129, .22), transparent 65%), radial-gradient(900px 600px at 15% 100%, rgba(124, 58, 237, .25), transparent 60%), linear-gradient(155deg, #0d1a1f 0%, #111e28 50%, #0d1117 100%)",
+      light: "radial-gradient(1000px 650px at 80% -10%, rgba(16, 185, 129, .14), transparent 65%), radial-gradient(800px 500px at 10% 90%, rgba(124, 58, 237, .10), transparent 60%), linear-gradient(155deg, #f0fdf4 0%, #eef2ff 55%, #f8fafc 100%)"
+    },
+    sunset: {
+      dark: "radial-gradient(1000px 680px at 85% -12%, rgba(244, 63, 94, .28), transparent 65%), radial-gradient(850px 600px at 10% 20%, rgba(245, 158, 11, .20), transparent 60%), linear-gradient(155deg, #221419 0%, #291b22 52%, #140d10 100%)",
+      light: "radial-gradient(980px 660px at 85% -10%, rgba(244, 63, 94, .13), transparent 65%), radial-gradient(800px 550px at 10% 25%, rgba(245, 158, 11, .11), transparent 60%), linear-gradient(155deg, #fff7ed 0%, #fff1f2 55%, #fdf4ff 100%)"
+    },
+    abyss: {
+      dark: "radial-gradient(1050px 720px at 80% -15%, rgba(56, 189, 248, .26), transparent 68%), radial-gradient(900px 650px at 15% 95%, rgba(99, 102, 241, .24), transparent 65%), linear-gradient(160deg, #0b132b 0%, #111a38 52%, #080c1a 100%)",
+      light: "radial-gradient(1000px 680px at 80% -12%, rgba(56, 189, 248, .15), transparent 68%), linear-gradient(155deg, #f0f9ff 0%, #e0f2fe 55%, #e8edf5 100%)"
     }
   };
+
+  const CURATED_WALLPAPERS = {
+    aurora: { name: "极光流动", url: "assets/wallpapers/aurora-flow.svg" },
+    cosmic: { name: "深邃星云", url: "assets/wallpapers/cosmic-glow.svg" },
+    zen: { name: "静谧远山", url: "assets/wallpapers/zen-mountain.svg" },
+    dusk: { name: "暮光落霞", url: "assets/wallpapers/warm-dusk.svg" }
+  };
+
+  const SOLID_SWATCHES_DARK = [
+    { color: "#101113", name: "深空黑" },
+    { color: "#18191c", name: "石墨炭" },
+    { color: "#0f172a", name: "星夜蓝" },
+    { color: "#062326", name: "冷墨青" },
+    { color: "#171424", name: "暗夜紫" },
+    { color: "#1a1412", name: "浓缩咖啡" }
+  ];
+
+  const SOLID_SWATCHES_LIGHT = [
+    { color: "#f8f9fa", name: "象牙白" },
+    { color: "#f3f4f6", name: "极简雪灰" },
+    { color: "#f6f4ee", name: "温润燕麦" },
+    { color: "#eef4f9", name: "冰川淡蓝" },
+    { color: "#eef6f3", name: "薄荷青灰" },
+    { color: "#fbf0f3", name: "晚霞雾粉" }
+  ];
+
   const lightSkins = new Set(["ivory", "mist", "rose", "light", "white"]);
   const darkSkins = new Set(["nebula", "abyss", "aurora", "ember", "midnight", "dark", "black"]);
+
   const DEFAULTS = {
     theme: "dark",
     wallpaperMode: "diffuse",
+    imageSubMode: "curated",
+    curatedId: "aurora",
     gradient: "slate",
-    solid: "#17191d",
+    solid: "#101113",
     solidCustomized: false,
     blur: 10,
     overlay: 24,
-    cachedWallpaperUrl: ""
+    textureMode: "none",
+    cardGlass: false,
+    cachedWallpaperUrl: "",
+    cachedBingUrl: "",
+    cachedBingTitle: "今日必应壁纸",
+    cachedBingCopyright: "",
+    cachedBingDate: ""
   };
 
   function clampNumber(value, min, max, fallback) {
@@ -70,53 +118,64 @@
 
     if (themes.has(saved?.theme)) state.theme = saved.theme;
     else if (themeFromSkin(saved?.skin)) state.theme = themeFromSkin(saved.skin);
+
     if (modes.has(saved?.wallpaperMode)) state.wallpaperMode = saved.wallpaperMode;
-    else if (saved?.wallpaperMode === "bing") state.wallpaperMode = "diffuse";
+    else if (saved?.wallpaperMode === "bing") {
+      state.wallpaperMode = "custom";
+      state.imageSubMode = "bing";
+    }
+
+    if (["curated", "bing", "upload"].includes(saved?.imageSubMode)) {
+      state.imageSubMode = saved.imageSubMode;
+    } else if (saved?.wallpaperMode === "custom" && saved?.cachedWallpaperUrl) {
+      state.imageSubMode = "upload";
+    }
+
+    if (Object.hasOwn(CURATED_WALLPAPERS, saved?.curatedId)) state.curatedId = saved.curatedId;
     if (Object.hasOwn(gradients, saved?.gradient)) state.gradient = saved.gradient;
+
     if (typeof saved?.solid === "string" && /^#[\da-f]{6}$/i.test(saved.solid)) {
       state.solid = saved.solid;
       state.solidCustomized = saved?.solidCustomized === true;
     }
-    state.blur = clampNumber(saved?.blur, 0, 24, state.blur);
-    state.overlay = clampNumber(saved?.overlay, 0, 70, state.overlay);
+
+    state.blur = clampNumber(saved?.blur, 0, 28, state.blur);
+    state.overlay = clampNumber(saved?.overlay, 0, 75, state.overlay);
+    state.textureMode = saved?.textureMode === "dots" ? "dots" : "none";
+    state.cardGlass = saved?.cardGlass === true;
+
     if (persistedWallpaperUrl(saved?.cachedWallpaperUrl)) state.cachedWallpaperUrl = saved.cachedWallpaperUrl;
+    if (typeof saved?.cachedBingUrl === "string") state.cachedBingUrl = saved.cachedBingUrl;
+    if (typeof saved?.cachedBingTitle === "string") state.cachedBingTitle = saved.cachedBingTitle;
+    if (typeof saved?.cachedBingCopyright === "string") state.cachedBingCopyright = saved.cachedBingCopyright;
+    if (typeof saved?.cachedBingDate === "string") state.cachedBingDate = saved.cachedBingDate;
 
     try {
       const legacyRaw = localStorage.getItem(LEGACY_APPEARANCE_KEY);
       if (legacyRaw) {
         const legacy = JSON.parse(legacyRaw);
         if (!Object.keys(saved).length && legacy?.preset === "ivory") state.theme = "light";
-        if (!Object.keys(saved).length && legacy?.preset === "image") state.wallpaperMode = "custom";
-        if (typeof legacy?.blur === "number") state.blur = clampNumber(legacy.blur, 0, 24, state.blur);
-        if (typeof legacy?.overlay === "number") state.overlay = clampNumber(legacy.overlay, 0, 70, state.overlay);
+        if (!Object.keys(saved).length && legacy?.preset === "image") {
+          state.wallpaperMode = "custom";
+          state.imageSubMode = "upload";
+        }
+        if (typeof legacy?.blur === "number") state.blur = clampNumber(legacy.blur, 0, 28, state.blur);
+        if (typeof legacy?.overlay === "number") state.overlay = clampNumber(legacy.overlay, 0, 75, state.overlay);
       }
     } catch {
       // Ignore invalid legacy appearance data.
     }
-    if (!modes.has(saved?.wallpaperMode) && saved?.wallpaperMode !== "bing") {
-      try {
-        const legacyRaw = localStorage.getItem(LEGACY_APPEARANCE_KEY);
-        if (legacyRaw && JSON.parse(legacyRaw)?.preset === "image") state.wallpaperMode = "custom";
-      } catch {
-        // Keep the default background when legacy settings are unavailable.
-      }
-    }
+
     if (!themes.has(saved?.theme)) {
       try {
         const storedTheme = localStorage.getItem(THEME_KEY);
         if (themes.has(storedTheme)) state.theme = storedTheme;
       } catch {
-        // The bootstrap theme is enough when storage cannot be read.
+        // Fallback
       }
     }
-    if (!state.solidCustomized) state.solid = state.theme === "light" ? "#f3f4f5" : "#17191d";
-    if (saved?.wallpaperMode === "bing") {
-      try {
-        localStorage.setItem(SETTINGS_KEY, JSON.stringify({ ...saved, ...state }));
-      } catch {
-        // Keep the safe in-memory fallback if a legacy setting cannot be rewritten.
-      }
-    }
+
+    if (!state.solidCustomized) state.solid = state.theme === "light" ? "#f8f9fa" : "#101113";
     return state;
   }
 
@@ -176,19 +235,17 @@
     try {
       localStorage.setItem(SETTINGS_KEY, JSON.stringify(state));
     } catch {
-      updateAppearanceSaveStatus("设置没有写入本地存储；刷新后可能恢复为之前的设置。请检查浏览器存储空间后重试。", true);
+      updateAppearanceSaveStatus("设置没有写入本地存储；请检查浏览器存储空间后重试。", true);
       updateWallpaperStatus("设置无法保存，请检查浏览器本地存储空间。", true);
       return false;
     }
-    // SETTINGS_KEY is authoritative; the small key remains for older builds.
-    try { localStorage.setItem(THEME_KEY, state.theme); } catch { /* The full settings still preserve the theme. */ }
+    try { localStorage.setItem(THEME_KEY, state.theme); } catch {}
     updateAppearanceSaveStatus("");
     return true;
   }
 
   function safeWallpaperUrl(value) {
     if (typeof value !== "string" || !value) return "";
-    if (!/^(https?:|blob:|data:image\/)/i.test(value)) return "";
     return `url(${JSON.stringify(value)})`;
   }
 
@@ -200,9 +257,11 @@
 
   function applyWallpaper() {
     root.dataset.wallpaperMode = state.wallpaperMode;
+    root.dataset.textureMode = state.textureMode || "none";
+    root.dataset.cardGlass = state.cardGlass ? "true" : "false";
     root.style.setProperty("--wallpaper-blur", `${state.blur}px`);
-    const imageMode = state.wallpaperMode === "custom";
-    root.style.setProperty("--wallpaper-overlay", String(imageMode ? state.overlay / 100 : 0));
+    const isImageMode = state.wallpaperMode === "custom";
+    root.style.setProperty("--wallpaper-overlay", String(isImageMode ? state.overlay / 100 : 0));
     root.style.setProperty("--wallpaper-solid", state.solid);
 
     if (state.wallpaperMode === "gradient") {
@@ -212,11 +271,20 @@
     }
 
     let imageUrl = "";
-    if (state.wallpaperMode === "custom") imageUrl = customImageObjectUrl || state.cachedWallpaperUrl;
+    if (isImageMode) {
+      if (state.imageSubMode === "curated") {
+        imageUrl = CURATED_WALLPAPERS[state.curatedId]?.url || CURATED_WALLPAPERS.aurora.url;
+      } else if (state.imageSubMode === "bing") {
+        imageUrl = state.cachedBingUrl;
+      } else if (state.imageSubMode === "upload") {
+        imageUrl = customImageObjectUrl || state.cachedWallpaperUrl;
+      }
+    }
+
     const cssUrl = safeWallpaperUrl(imageUrl);
     if (cssUrl) {
       root.style.setProperty("--custom-wallpaper-url", cssUrl);
-    } else if (state.wallpaperMode === "custom" && bootstrapWallpaperStyle) {
+    } else if (isImageMode && bootstrapWallpaperStyle) {
       root.style.setProperty("--custom-wallpaper-url", bootstrapWallpaperStyle);
     } else {
       root.style.removeProperty("--custom-wallpaper-url");
@@ -226,7 +294,7 @@
   function applyTheme(theme, persist = true) {
     if (!themes.has(theme)) return state.theme;
     state.theme = theme;
-    if (!state.solidCustomized) state.solid = theme === "light" ? "#f3f4f5" : "#17191d";
+    if (!state.solidCustomized) state.solid = theme === "light" ? "#f8f9fa" : "#101113";
     const skin = skinForTheme(theme);
     root.dataset.theme = theme;
     root.dataset.skin = skin.id;
@@ -271,46 +339,215 @@
     });
   }
 
+  async function fetchBingDailyWallpaper(force = false) {
+    const today = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+    if (!force && state.cachedBingUrl && state.cachedBingDate === today) {
+      return {
+        url: state.cachedBingUrl,
+        title: state.cachedBingTitle,
+        copyright: state.cachedBingCopyright,
+        date: state.cachedBingDate
+      };
+    }
+
+    try {
+      const cachedRaw = localStorage.getItem(BING_CACHE_KEY);
+      if (!force && cachedRaw) {
+        const cached = JSON.parse(cachedRaw);
+        if (cached && (cached.date === today || cached.url)) {
+          state.cachedBingUrl = cached.url;
+          state.cachedBingTitle = cached.title || "今日必应壁纸";
+          state.cachedBingCopyright = cached.copyright || "";
+          state.cachedBingDate = cached.date || today;
+          return cached;
+        }
+      }
+    } catch {}
+
+    const bingInfo = document.querySelector("#bingCopyright");
+    if (bingInfo) bingInfo.textContent = "正在同步今日必应高清壁纸…";
+
+    try {
+      const res = await fetch("https://bing.biturl.top/?resolution=1920&format=json&index=0&mkt=zh-CN", { cache: "no-cache" });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const data = await res.json();
+      if (data && data.url) {
+        const result = {
+          date: today,
+          url: data.url,
+          title: data.copyright ? data.copyright.split("(")[0].trim() : "今日必应高清壁纸",
+          copyright: data.copyright || ""
+        };
+        state.cachedBingUrl = result.url;
+        state.cachedBingTitle = result.title;
+        state.cachedBingCopyright = result.copyright;
+        state.cachedBingDate = result.date;
+        try { localStorage.setItem(BING_CACHE_KEY, JSON.stringify(result)); } catch {}
+        saveSettings();
+        if (state.wallpaperMode === "custom" && state.imageSubMode === "bing") {
+          applyWallpaper();
+        }
+        updateWallpaperUI();
+        return result;
+      }
+    } catch (e) {
+      // Fallback to cn.bing.com
+      try {
+        const res2 = await fetch("https://cn.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1&nc=1612409408888&pid=hp");
+        if (res2.ok) {
+          const data2 = await res2.json();
+          if (data2?.images?.[0]) {
+            const img = data2.images[0];
+            const fullUrl = img.url.startsWith("http") ? img.url : `https://cn.bing.com${img.url}`;
+            const result = {
+              date: today,
+              url: fullUrl,
+              title: img.title || (img.copyright ? img.copyright.split("(")[0].trim() : "今日必应壁纸"),
+              copyright: img.copyright || ""
+            };
+            state.cachedBingUrl = result.url;
+            state.cachedBingTitle = result.title;
+            state.cachedBingCopyright = result.copyright;
+            state.cachedBingDate = result.date;
+            try { localStorage.setItem(BING_CACHE_KEY, JSON.stringify(result)); } catch {}
+            saveSettings();
+            if (state.wallpaperMode === "custom" && state.imageSubMode === "bing") {
+              applyWallpaper();
+            }
+            updateWallpaperUI();
+            return result;
+          }
+        }
+      } catch {}
+    }
+
+    if (state.cachedBingUrl) {
+      updateWallpaperUI();
+      return { url: state.cachedBingUrl, title: state.cachedBingTitle, copyright: state.cachedBingCopyright };
+    }
+    return null;
+  }
+
+  function renderSolidSwatches() {
+    const container = document.querySelector("#wallpaperSolidSwatches");
+    if (!container) return;
+    const swatches = state.theme === "light" ? SOLID_SWATCHES_LIGHT : SOLID_SWATCHES_DARK;
+    container.innerHTML = "";
+    swatches.forEach((item) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "wallpaper-solid-swatch-btn";
+      btn.dataset.swatchColor = item.color;
+      btn.title = item.name;
+      btn.style.backgroundColor = item.color;
+      const isSelected = state.solid.toLowerCase() === item.color.toLowerCase();
+      btn.classList.toggle("is-active", isSelected);
+      btn.setAttribute("aria-label", item.name);
+      btn.addEventListener("click", () => {
+        state.solid = item.color;
+        state.solidCustomized = true;
+        state.wallpaperMode = "solid";
+        saveSettings();
+        applyWallpaper();
+        updateWallpaperUI();
+      });
+      container.appendChild(btn);
+    });
+  }
+
   function updateWallpaperUI() {
+    // 1. 主模式按钮
     document.querySelectorAll("[data-wallpaper-choice]").forEach((button) => {
       const selected = button.dataset.wallpaperChoice === state.wallpaperMode;
       button.classList.toggle("is-active", selected);
       button.setAttribute("aria-pressed", String(selected));
     });
 
+    // 2. 渐变选项
     document.querySelectorAll("[data-wallpaper-gradient]").forEach((button) => {
       const selected = button.dataset.wallpaperGradient === state.gradient;
       button.classList.toggle("is-active", selected);
       button.setAttribute("aria-pressed", String(selected));
     });
 
+    // 3. 纯色快捷卡
+    renderSolidSwatches();
+    const solidColor = document.querySelector("#wallpaperSolidColor");
+    if (solidColor) solidColor.value = state.solid;
+
+    // 4. 图片来源 Tab 与各子区域切换
+    document.querySelectorAll("[data-image-source]").forEach((tab) => {
+      const selected = tab.dataset.imageSource === state.imageSubMode;
+      tab.classList.toggle("is-active", selected);
+      tab.setAttribute("aria-selected", String(selected));
+    });
+
+    const isImageMode = state.wallpaperMode === "custom";
+    const curatedGrid = document.querySelector("#curatedWallpapersGrid");
+    const bingCard = document.querySelector("#bingWallpaperCard");
+    const customUploadBox = document.querySelector("#customUploadBox");
+
+    if (curatedGrid) curatedGrid.hidden = !isImageMode || state.imageSubMode !== "curated";
+    if (bingCard) bingCard.hidden = !isImageMode || state.imageSubMode !== "bing";
+    if (customUploadBox) customUploadBox.hidden = !isImageMode || state.imageSubMode !== "upload";
+
+    // 精选壁纸选中高亮
+    document.querySelectorAll("[data-curated-id]").forEach((item) => {
+      const selected = item.dataset.curatedId === state.curatedId;
+      item.classList.toggle("is-active", selected);
+    });
+
+    // 必应卡片预览信息
+    const bingPreviewImg = document.querySelector("#bingPreviewImg");
+    const bingTitle = document.querySelector("#bingTitle");
+    const bingCopyright = document.querySelector("#bingCopyright");
+    if (bingPreviewImg && state.cachedBingUrl) {
+      bingPreviewImg.style.backgroundImage = `url("${state.cachedBingUrl}")`;
+    }
+    if (bingTitle && state.cachedBingTitle) bingTitle.textContent = state.cachedBingTitle;
+    if (bingCopyright && state.cachedBingCopyright) bingCopyright.textContent = state.cachedBingCopyright;
+
+    // 自定义上传图片预览
+    const customThumb = document.querySelector("#customWallpaperThumb");
+    const removeBtn = document.querySelector("#removeWallpaperButton");
+    const uploadBtn = document.querySelector("#uploadWallpaperButton");
+    const hasCustomImg = Boolean(customImageObjectUrl || state.cachedWallpaperUrl);
+    if (customThumb) {
+      customThumb.style.backgroundImage = hasCustomImg ? safeWallpaperUrl(customImageObjectUrl || state.cachedWallpaperUrl) : "none";
+    }
+    if (removeBtn) removeBtn.hidden = !hasCustomImg;
+    if (uploadBtn) uploadBtn.textContent = hasCustomImg ? "更换图片" : "选择本地图片";
+
+    // 5. 区域显示/隐藏
     const options = document.querySelector("#wallpaperOptions");
     const gradientOptions = document.querySelector("#wallpaperGradientOptions");
     const solidOptions = document.querySelector("#wallpaperSolidOptions");
     const imageOptions = document.querySelector("#wallpaperImageOptions");
     const adjustments = document.querySelector("#wallpaperAdjustments");
-    const blurRow = document.querySelector("#wallpaperBlurRow");
-    const solidColor = document.querySelector("#wallpaperSolidColor");
+
+    const hasOptions = state.wallpaperMode !== "diffuse";
+    if (options) options.hidden = !hasOptions;
+    if (gradientOptions) gradientOptions.hidden = state.wallpaperMode !== "gradient";
+    if (solidOptions) solidOptions.hidden = state.wallpaperMode !== "solid";
+    if (imageOptions) imageOptions.hidden = !isImageMode;
+    if (adjustments) adjustments.hidden = !isImageMode;
+
+    // 滑块
     const blurRange = document.querySelector("#wallpaperBlurRange");
     const blurValue = document.querySelector("#wallpaperBlurValue");
     const overlayRange = document.querySelector("#wallpaperOverlayRange");
     const overlayValue = document.querySelector("#wallpaperOverlayValue");
-    const hasOptions = state.wallpaperMode !== "diffuse";
-    const imageMode = state.wallpaperMode === "custom";
-
-    if (options) options.hidden = !hasOptions;
-    if (gradientOptions) gradientOptions.hidden = state.wallpaperMode !== "gradient";
-    if (solidOptions) solidOptions.hidden = state.wallpaperMode !== "solid";
-    if (imageOptions) imageOptions.hidden = !imageMode;
-    if (adjustments) adjustments.hidden = !imageMode;
-    if (blurRow) blurRow.hidden = false;
-    if (solidColor) solidColor.value = state.solid;
     if (blurRange) blurRange.value = String(state.blur);
     if (blurValue) blurValue.value = `${state.blur} px`;
     if (overlayRange) overlayRange.value = String(state.overlay);
     if (overlayValue) overlayValue.value = `${state.overlay}%`;
-    const uploadButton = document.querySelector("#uploadWallpaperButton");
-    if (uploadButton) uploadButton.textContent = customImageObjectUrl || state.cachedWallpaperUrl ? "更换图片" : "选择图片";
+
+    // 6. 高级质感开关
+    const dotGridToggle = document.querySelector("#toggleDotGrid");
+    if (dotGridToggle) dotGridToggle.setAttribute("aria-checked", String(state.textureMode === "dots"));
+
+    const cardGlassToggle = document.querySelector("#toggleCardGlass");
+    if (cardGlassToggle) cardGlassToggle.setAttribute("aria-checked", String(state.cardGlass === true));
   }
 
   async function loadStoredCustomImage() {
@@ -321,26 +558,20 @@
       const blob = await imageStore("get");
       if (generation !== wallpaperImageGeneration) return;
       if (!(blob instanceof Blob)) {
-        if (state.wallpaperMode === "custom" && !state.cachedWallpaperUrl) {
-          state.wallpaperMode = "diffuse";
-          applyWallpaper();
-          saveSettings();
-          updateWallpaperUI();
-          updateWallpaperStatus("还没有已保存的背景图片，请选择一张图片。", false);
+        if (state.wallpaperMode === "custom" && state.imageSubMode === "upload" && !state.cachedWallpaperUrl) {
+          updateWallpaperStatus("还没有保存的本地图片，请选择一张图片。", false);
         }
         return;
       }
       if (customImageObjectUrl) URL.revokeObjectURL(customImageObjectUrl);
       customImageObjectUrl = URL.createObjectURL(blob);
-      if (state.wallpaperMode === "custom") applyWallpaper();
+      if (state.wallpaperMode === "custom" && state.imageSubMode === "upload") applyWallpaper();
       updateWallpaperUI();
-      updateWallpaperStatus("自定义图片已保存，可随时更换。", false);
+      updateWallpaperStatus("自定义图片已保存到本地，刷新后仍然保留。", false);
     } catch {
       if (generation !== wallpaperImageGeneration) return;
-      // A transient IndexedDB failure must not erase the user's saved choice:
-      // keep custom mode so the next page load or explicit retry can recover it.
       updateWallpaperUI();
-      updateWallpaperStatus("图片库暂时无法读取，已保留自定义背景设置；可以重试或重新选择图片。", true);
+      updateWallpaperStatus("图片库暂时无法读取，已保留当前背景设置。", true);
     } finally {
       wallpaperImageRestoreCount = Math.max(0, wallpaperImageRestoreCount - 1);
     }
@@ -357,40 +588,37 @@
     const menuItem = document.querySelector("#appearanceMenuItem");
     const fileInput = document.querySelector("#wallpaperFileInput");
     const uploadButton = document.querySelector("#uploadWallpaperButton");
+    const removeButton = document.querySelector("#removeWallpaperButton");
+    const refreshBingBtn = document.querySelector("#refreshBingButton");
+
     const chooseWallpaperFile = () => {
       if (wallpaperUploadInProgress) {
-        updateWallpaperStatus("正在处理图片，请稍候。", false);
+        updateWallpaperStatus("正在处理图片，请稍候…", false);
         return;
       }
       fileInput?.click();
     };
 
+    // 主题切换
     document.querySelectorAll("[data-theme-option]").forEach((button) => {
       button.addEventListener("click", () => applyTheme(button.dataset.themeOption));
     });
 
+    // 背景模式切换
     document.querySelectorAll("[data-wallpaper-choice]").forEach((button) => {
       button.addEventListener("click", () => {
         const mode = button.dataset.wallpaperChoice;
-        if (mode === "custom" && !customImageObjectUrl && !state.cachedWallpaperUrl) {
-          if (wallpaperImageRestoreCount > 0) {
-            state.wallpaperMode = mode;
-            saveSettings();
-            applyWallpaper();
-            updateWallpaperUI();
-            updateWallpaperStatus("正在恢复已保存的背景图片…", false);
-            return;
-          }
-          chooseWallpaperFile();
-          return;
-        }
         state.wallpaperMode = mode;
         saveSettings();
         applyWallpaper();
         updateWallpaperUI();
+        if (mode === "custom" && state.imageSubMode === "bing" && !state.cachedBingUrl) {
+          fetchBingDailyWallpaper();
+        }
       });
     });
 
+    // 渐变方案切换
     document.querySelectorAll("[data-wallpaper-gradient]").forEach((button) => {
       button.addEventListener("click", () => {
         if (!Object.hasOwn(gradients, button.dataset.wallpaperGradient)) return;
@@ -402,6 +630,7 @@
       });
     });
 
+    // 纯色自定义取色器
     document.querySelector("#wallpaperSolidColor")?.addEventListener("input", (event) => {
       state.solid = event.target.value;
       state.solidCustomized = true;
@@ -411,7 +640,59 @@
       updateWallpaperUI();
     });
 
+    // 壁纸来源 Tab
+    document.querySelectorAll("[data-image-source]").forEach((tab) => {
+      tab.addEventListener("click", () => {
+        const source = tab.dataset.imageSource;
+        state.imageSubMode = source;
+        state.wallpaperMode = "custom";
+        saveSettings();
+        applyWallpaper();
+        updateWallpaperUI();
+        if (source === "bing" && !state.cachedBingUrl) {
+          fetchBingDailyWallpaper();
+        }
+      });
+    });
+
+    // 精选画廊项目选择
+    document.querySelectorAll("[data-curated-id]").forEach((item) => {
+      item.addEventListener("click", () => {
+        state.curatedId = item.dataset.curatedId;
+        state.imageSubMode = "curated";
+        state.wallpaperMode = "custom";
+        saveSettings();
+        applyWallpaper();
+        updateWallpaperUI();
+      });
+    });
+
+    // 必应刷新按钮
+    refreshBingBtn?.addEventListener("click", async () => {
+      refreshBingBtn.disabled = true;
+      refreshBingBtn.textContent = "正在获取…";
+      await fetchBingDailyWallpaper(true);
+      refreshBingBtn.disabled = false;
+      refreshBingBtn.textContent = "🔄 刷新今日壁纸";
+    });
+
+    // 自定义上传
     uploadButton?.addEventListener("click", chooseWallpaperFile);
+    removeButton?.addEventListener("click", async () => {
+      try {
+        await imageStore("delete");
+        if (customImageObjectUrl) URL.revokeObjectURL(customImageObjectUrl);
+        customImageObjectUrl = "";
+        state.cachedWallpaperUrl = "";
+        saveSettings();
+        applyWallpaper();
+        updateWallpaperUI();
+        updateWallpaperStatus("已移除自定义图片，可重新选择图片。", false);
+      } catch (e) {
+        updateWallpaperStatus("移除图片失败：" + e.message, true);
+      }
+    });
+
     fileInput?.addEventListener("change", async (event) => {
       if (wallpaperUploadInProgress) return;
       const input = event.currentTarget;
@@ -423,8 +704,6 @@
         return;
       }
 
-      const wasInputDisabled = input.disabled;
-      const wasButtonDisabled = uploadButton?.disabled ?? false;
       wallpaperUploadInProgress = true;
       const wallpaperGeneration = Number(root.dataset.wallpaperGeneration) || 0;
       root.dataset.wallpaperGeneration = String(wallpaperGeneration + 1);
@@ -432,59 +711,30 @@
       if (uploadButton) {
         uploadButton.disabled = true;
         uploadButton.textContent = "正在处理…";
-        uploadButton.setAttribute("aria-busy", "true");
       }
-      updateWallpaperStatus("正在处理图片…", false);
+      updateWallpaperStatus("正在压缩优化图片…", false);
       let bitmap = null;
       let pendingImageObjectUrl = "";
       try {
         bitmap = await createImageBitmap(file);
-        const maxDimension = 2200;
+        const maxDimension = 2400;
         const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height));
         const canvas = document.createElement("canvas");
         canvas.width = Math.max(1, Math.round(bitmap.width * scale));
         canvas.height = Math.max(1, Math.round(bitmap.height * scale));
         const context = canvas.getContext("2d");
-        if (!context) throw new Error("无法处理这张图片");
+        if (!context) throw new Error("无法创建画布上下文");
         context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
 
-        const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/webp", 0.86));
+        const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/webp", 0.88));
         if (!blob) throw new Error("图片转换失败");
-        // Keep the previous image available until both the new image and its
-        // settings have been saved. localStorage and IndexedDB cannot share a
-        // transaction, so restore the image if settings persistence fails.
-        const previousBlob = await imageStore("get");
         pendingImageObjectUrl = URL.createObjectURL(blob);
         await imageStore("put", blob);
 
-        const previousState = { ...state };
         state.wallpaperMode = "custom";
+        state.imageSubMode = "upload";
         state.cachedWallpaperUrl = "";
-        const settingsSaved = saveSettings();
-        if (!settingsSaved) {
-          wallpaperImageGeneration++;
-          state = previousState;
-          let previousImageRestored = true;
-          try {
-            if (previousBlob instanceof Blob) await imageStore("put", previousBlob);
-            else await imageStore("delete");
-          } catch {
-            previousImageRestored = false;
-          }
-          if (customImageObjectUrl) URL.revokeObjectURL(customImageObjectUrl);
-          customImageObjectUrl = previousBlob instanceof Blob ? URL.createObjectURL(previousBlob) : "";
-          URL.revokeObjectURL(pendingImageObjectUrl);
-          pendingImageObjectUrl = "";
-          applyWallpaper();
-          updateWallpaperUI();
-          updateWallpaperStatus(
-            previousImageRestored
-              ? "设置无法保存，已保留原有背景；请检查浏览器本地存储空间后重试。"
-              : "设置无法保存，且旧图片恢复失败；请先重新选择背景，再刷新页面。",
-            true
-          );
-          return;
-        }
+        saveSettings();
 
         wallpaperImageGeneration++;
         if (customImageObjectUrl) URL.revokeObjectURL(customImageObjectUrl);
@@ -492,27 +742,28 @@
         pendingImageObjectUrl = "";
         applyWallpaper();
         updateWallpaperUI();
-        updateWallpaperStatus("图片已保存到本机，刷新后仍会保留。", false);
+        updateWallpaperStatus("图片已成功导入并保存至本地浏览器！", false);
       } catch (error) {
         if (pendingImageObjectUrl) URL.revokeObjectURL(pendingImageObjectUrl);
         updateWallpaperStatus(`图片保存失败：${error?.message || "请重试"}`, true);
       } finally {
         bitmap?.close();
         wallpaperUploadInProgress = false;
-        input.disabled = wasInputDisabled;
+        input.disabled = false;
         input.value = "";
         if (uploadButton) {
-          uploadButton.disabled = wasButtonDisabled;
-          uploadButton.removeAttribute("aria-busy");
+          uploadButton.disabled = false;
+          uploadButton.textContent = "更换图片";
         }
         updateWallpaperUI();
       }
     });
 
+    // 模糊与遮罩滑块
     const blurRange = document.querySelector("#wallpaperBlurRange");
     const blurValue = document.querySelector("#wallpaperBlurValue");
     blurRange?.addEventListener("input", () => {
-      state.blur = clampNumber(Number(blurRange.value), 0, 24, state.blur);
+      state.blur = clampNumber(Number(blurRange.value), 0, 28, state.blur);
       updateRangeValue(blurRange, blurValue, " px");
       saveSettings();
       applyWallpaper();
@@ -521,10 +772,27 @@
     const overlayRange = document.querySelector("#wallpaperOverlayRange");
     const overlayValue = document.querySelector("#wallpaperOverlayValue");
     overlayRange?.addEventListener("input", () => {
-      state.overlay = clampNumber(Number(overlayRange.value), 0, 70, state.overlay);
+      state.overlay = clampNumber(Number(overlayRange.value), 0, 75, state.overlay);
       updateRangeValue(overlayRange, overlayValue, "%");
       saveSettings();
       applyWallpaper();
+    });
+
+    // 高级质感开关
+    const dotGridToggle = document.querySelector("#toggleDotGrid");
+    dotGridToggle?.addEventListener("click", () => {
+      state.textureMode = state.textureMode === "dots" ? "none" : "dots";
+      saveSettings();
+      applyWallpaper();
+      updateWallpaperUI();
+    });
+
+    const cardGlassToggle = document.querySelector("#toggleCardGlass");
+    cardGlassToggle?.addEventListener("click", () => {
+      state.cardGlass = !state.cardGlass;
+      saveSettings();
+      applyWallpaper();
+      updateWallpaperUI();
     });
 
     const openAppearance = () => {
@@ -533,6 +801,7 @@
       updateWallpaperUI();
       if (!dialog.open) dialog.showModal();
     };
+
     openButton?.addEventListener("click", openAppearance);
     menuItem?.addEventListener("click", openAppearance);
     updateThemeCards();
@@ -556,6 +825,10 @@
   applyTheme(state.theme, false);
   loadStoredCustomImage();
 
+  if (state.wallpaperMode === "custom" && state.imageSubMode === "bing" && !state.cachedBingUrl) {
+    fetchBingDailyWallpaper();
+  }
+
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", setupUI, { once: true });
   } else {
@@ -572,28 +845,28 @@
         const saved = JSON.parse(event.newValue);
         if (themes.has(saved.theme)) state.theme = saved.theme;
         if (modes.has(saved.wallpaperMode)) state.wallpaperMode = saved.wallpaperMode;
+        if (["curated", "bing", "upload"].includes(saved.imageSubMode)) state.imageSubMode = saved.imageSubMode;
+        if (Object.hasOwn(CURATED_WALLPAPERS, saved.curatedId)) state.curatedId = saved.curatedId;
         if (Object.hasOwn(gradients, saved.gradient)) state.gradient = saved.gradient;
         if (typeof saved.solid === "string" && /^#[\da-f]{6}$/i.test(saved.solid)) state.solid = saved.solid;
         state.solidCustomized = saved.solidCustomized === true;
-        state.blur = clampNumber(saved.blur, 0, 24, state.blur);
-        state.overlay = clampNumber(saved.overlay, 0, 70, state.overlay);
-        if (typeof saved.cachedWallpaperUrl === "string") {
-          state.cachedWallpaperUrl = persistedWallpaperUrl(saved.cachedWallpaperUrl)
-            ? saved.cachedWallpaperUrl
-            : "";
-        }
-        if (!state.solidCustomized) state.solid = state.theme === "light" ? "#f3f4f5" : "#17191d";
+        state.blur = clampNumber(saved.blur, 0, 28, state.blur);
+        state.overlay = clampNumber(saved.overlay, 0, 75, state.overlay);
+        state.textureMode = saved.textureMode === "dots" ? "dots" : "none";
+        state.cardGlass = saved.cardGlass === true;
+        if (typeof saved.cachedWallpaperUrl === "string") state.cachedWallpaperUrl = saved.cachedWallpaperUrl;
+        if (typeof saved.cachedBingUrl === "string") state.cachedBingUrl = saved.cachedBingUrl;
+        if (!state.solidCustomized) state.solid = state.theme === "light" ? "#f8f9fa" : "#101113";
         updateAppearanceSaveStatus("");
         applyTheme(state.theme, false);
-        if (state.wallpaperMode === "custom") loadStoredCustomImage();
+        if (state.wallpaperMode === "custom" && state.imageSubMode === "upload") loadStoredCustomImage();
       } catch {
-        // Ignore incomplete cross-tab updates.
+        // Ignore incomplete updates
       }
     }
   });
 
   window.addEventListener("pagehide", (event) => {
-    // A BFCache restore reuses this document and its current wallpaper URL.
     if (event.persisted) return;
     if (customImageObjectUrl) URL.revokeObjectURL(customImageObjectUrl);
   });

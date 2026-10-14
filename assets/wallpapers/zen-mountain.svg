@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="100%" height="100%">
+  <defs>
+    <linearGradient id="zen-sky" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="55%" stop-color="#1e293b"/>
+      <stop offset="100%" stop-color="#334155"/>
+    </linearGradient>
+    <radialGradient id="zen-sun" cx="50%" cy="48%" r="40%">
+      <stop offset="0%" stop-color="#FCD34D" stop-opacity="0.3"/>
+      <stop offset="40%" stop-color="#F59E0B" stop-opacity="0.1"/>
+      <stop offset="80%" stop-color="#1E293B" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="mountain-back" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#283548"/>
+      <stop offset="100%" stop-color="#18202c"/>
+    </linearGradient>
+    <linearGradient id="mountain-front" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#171f2b"/>
+      <stop offset="100%" stop-color="#0b1118"/>
+    </linearGradient>
+    <linearGradient id="mist" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#64748B" stop-opacity="0"/>
+      <stop offset="50%" stop-color="#94A3B8" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#0B1118" stop-opacity="0.4"/>
+    </linearGradient>
+  </defs>
+  <rect width="100%" height="100%" fill="url(#zen-sky)"/>
+  <!-- Morning Sun Glow -->
+  <circle cx="960" cy="520" r="380" fill="url(#zen-sun)"/>
+  <!-- Far Mountains -->
+  <path d="M-100 780 L 320 540 L 780 720 L 1240 510 L 1680 690 L 2020 560 L 2020 1080 L -100 1080 Z" fill="url(#mountain-back)"/>
+  <!-- Soft Mist between layers -->
+  <rect y="600" width="100%" height="480" fill="url(#mist)"/>
+  <!-- Near Mountains -->
+  <path d="M-100 890 L 260 680 L 640 850 L 1020 650 L 1500 860 L 1880 710 L 2020 780 L 2020 1080 L -100 1080 Z" fill="url(#mountain-front)"/>
+</svg>

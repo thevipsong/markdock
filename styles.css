@@ -3123,14 +3123,89 @@ button:disabled,
 }
 
 /* Saved backgrounds stay separate from the two monochrome interface themes. */
-.backdrop { background: var(--wallpaper-gradient, var(--skin-diffuse)); }
-:root[data-wallpaper-mode="solid"] .backdrop { background: var(--wallpaper-solid, var(--bg-canvas)); }
-@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  :root[data-wallpaper-mode="custom"] .bookmark-card {
-    -webkit-backdrop-filter: blur(12px) saturate(118%);
-    backdrop-filter: blur(12px) saturate(118%);
-  }
+.backdrop {
+  background: var(--wallpaper-gradient, var(--skin-diffuse));
+  background-color: var(--bg-canvas);
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  transition: background 0.4s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.4s ease;
 }
+:root[data-wallpaper-mode="solid"] .backdrop { background: var(--wallpaper-solid, var(--bg-canvas)); }
+
+.backdrop-image {
+  position: absolute;
+  inset: -40px;
+  background-image: var(--custom-wallpaper-url, none);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  filter: blur(var(--wallpaper-blur, 0px));
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease, filter 0.2s ease;
+}
+:root[data-wallpaper-mode="custom"] .backdrop-image {
+  opacity: 1;
+}
+
+.backdrop-overlay {
+  position: absolute;
+  inset: 0;
+  background: #000000;
+  opacity: var(--wallpaper-overlay, 0);
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+/* 微质感科技点阵网格 */
+.backdrop-texture {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  z-index: 1;
+}
+:root[data-texture-mode="dots"] .backdrop-texture {
+  opacity: 1;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.16) 1.2px, transparent 1.2px);
+  background-size: 24px 24px;
+}
+:root[data-theme="light"][data-texture-mode="dots"] .backdrop-texture {
+  background-image: radial-gradient(rgba(0, 0, 0, 0.09) 1.2px, transparent 1.2px);
+}
+
+/* 卡片毛玻璃通透浮雕质感 */
+:root[data-card-glass="true"] .bookmark-card {
+  background: rgba(255, 255, 255, 0.78) !important;
+  border-color: rgba(255, 255, 255, 0.6) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(140%) !important;
+  backdrop-filter: blur(16px) saturate(140%) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06) !important;
+}
+:root[data-card-glass="true"] .bookmark-card:hover,
+:root[data-card-glass="true"] .bookmark-card:focus-within {
+  background: rgba(255, 255, 255, 0.92) !important;
+  border-color: rgba(255, 255, 255, 0.8) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.09) !important;
+}
+:root[data-theme="dark"][data-card-glass="true"] .bookmark-card {
+  background: rgba(26, 27, 33, 0.72) !important;
+  border-color: rgba(255, 255, 255, 0.09) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(140%) !important;
+  backdrop-filter: blur(16px) saturate(140%) !important;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35) !important;
+}
+:root[data-theme="dark"][data-card-glass="true"] .bookmark-card:hover,
+:root[data-theme="dark"][data-card-glass="true"] .bookmark-card:focus-within {
+  background: rgba(33, 34, 42, 0.84) !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.48) !important;
+}
+
 .appearance-wallpaper {
   margin-top: 22px;
   padding-top: 18px;
@@ -3162,22 +3237,32 @@ button:disabled,
 .wallpaper-mode-button.is-active { box-shadow: inset 0 0 0 1px var(--text-secondary); }
 .wallpaper-mode-swatch { width: 100%; height: 34px; display: block; border: 1px solid var(--line-strong); border-radius: 7px; }
 .wallpaper-swatch-default { background: linear-gradient(145deg, #20242a, #111317 72%); }
-.wallpaper-swatch-gradient { background: linear-gradient(140deg, #385266 0%, #26343e 46%, #171b20 100%); }
+.wallpaper-swatch-gradient { background: linear-gradient(140deg, #10b981 0%, #385266 46%, #7c3aed 100%); }
 .wallpaper-swatch-solid { background: #34383e; }
-.wallpaper-swatch-image { background: linear-gradient(140deg, #d9dadd 0%, #737b84 38%, #283440 39%, #182129 100%); }
+.wallpaper-swatch-image { background: linear-gradient(140deg, #38bdf8 0%, #818cf8 40%, #ec4899 100%); }
 :root[data-theme="light"] .wallpaper-swatch-default { background: linear-gradient(145deg, #fafbfc, #e5e8eb 78%); }
-:root[data-theme="light"] .wallpaper-swatch-gradient { background: linear-gradient(140deg, #bfd5e2, #e6eef2 46%, #f8fafb 100%); }
+:root[data-theme="light"] .wallpaper-swatch-gradient { background: linear-gradient(140deg, #dcfce7, #bfd5e2 46%, #ede9fe 100%); }
 :root[data-theme="light"] .wallpaper-swatch-solid { background: #f1f2f3; }
+:root[data-theme="light"] .wallpaper-swatch-image { background: linear-gradient(140deg, #e0f2fe 0%, #e0e7ff 40%, #fce7f3 100%); }
+
 .wallpaper-options[hidden],
 .wallpaper-option-row[hidden],
+.wallpaper-solid-section[hidden],
+.wallpaper-image-section[hidden],
 .wallpaper-adjustments[hidden],
-.wallpaper-range-row[hidden] { display: none; }
-.wallpaper-options { margin-top: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-soft); }
+.curated-wallpapers-grid[hidden],
+.bing-wallpaper-card[hidden],
+.custom-upload-box[hidden],
+.wallpaper-range-row[hidden] { display: none !important; }
+
+.wallpaper-options { margin-top: 12px; padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-soft); }
 .wallpaper-option-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
 .wallpaper-option-label { color: var(--text-secondary); font-size: 11px; font-weight: 650; }
+
+/* 渐变预设 */
 .wallpaper-gradient-options { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 7px; }
 .wallpaper-gradient-button {
-  min-width: 68px;
+  min-width: 58px;
   display: grid;
   justify-items: center;
   gap: 4px;
@@ -3188,32 +3273,279 @@ button:disabled,
   color: var(--text-muted);
   font-size: 10px;
   cursor: pointer;
+  transition: all 0.16s ease;
 }
 .wallpaper-gradient-button:hover,
 .wallpaper-gradient-button.is-active { border-color: var(--line-strong); color: var(--text); background: var(--surface-raised); }
-.gradient-swatch { width: 58px; height: 28px; display: block; border: 1px solid rgba(128, 135, 145, .3); border-radius: 6px; }
+.gradient-swatch { width: 52px; height: 26px; display: block; border: 1px solid rgba(128, 135, 145, .3); border-radius: 6px; }
 .gradient-slate { background: linear-gradient(145deg, #3d4249, #171a20 78%); }
 .gradient-coast { background: linear-gradient(145deg, #456f89, #19242b 78%); }
 .gradient-plum { background: linear-gradient(145deg, #685573, #201d24 78%); }
+.gradient-aurora { background: linear-gradient(145deg, #0d382d, #2e1065 78%); }
+.gradient-sunset { background: linear-gradient(145deg, #7c1d32, #451a03 78%); }
+.gradient-abyss { background: linear-gradient(145deg, #075985, #080c1a 78%); }
 :root[data-theme="light"] .gradient-slate { background: linear-gradient(145deg, #fafbfc, #dfe3e6 78%); }
 :root[data-theme="light"] .gradient-coast { background: linear-gradient(145deg, #c9e0ec, #edf4f7 78%); }
 :root[data-theme="light"] .gradient-plum { background: linear-gradient(145deg, #ded1e6, #f5f0f7 78%); }
-.wallpaper-color-input { width: 44px; height: 34px; padding: 3px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--surface-raised); cursor: pointer; }
-.wallpaper-image-row > div { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+:root[data-theme="light"] .gradient-aurora { background: linear-gradient(145deg, #dcfce7, #ede9fe 78%); }
+:root[data-theme="light"] .gradient-sunset { background: linear-gradient(145deg, #ffe4e6, #fef3c7 78%); }
+:root[data-theme="light"] .gradient-abyss { background: linear-gradient(145deg, #e0f2fe, #f1f5f9 78%); }
+
+/* 纯色快捷色卡 */
+.wallpaper-solid-heading { display: flex; align-items: center; justify-content: space-between; width: 100%; margin-bottom: 10px; }
+.wallpaper-custom-picker-wrap { display: flex; align-items: center; gap: 8px; }
+.wallpaper-picker-label { font-size: 11px; color: var(--text-muted); cursor: pointer; }
+.wallpaper-color-input { width: 36px; height: 28px; padding: 2px; border: 1px solid var(--line-strong); border-radius: 7px; background: var(--surface-raised); cursor: pointer; }
+.wallpaper-solid-swatches { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; }
+.wallpaper-solid-swatch-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  position: relative;
+  padding: 0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+}
+.wallpaper-solid-swatch-btn:hover { transform: scale(1.12); }
+.wallpaper-solid-swatch-btn.is-active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--bg-canvas), 0 2px 8px rgba(0,0,0,0.3);
+  transform: scale(1.08);
+}
+
+/* 图片来源选项卡 */
+.wallpaper-source-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+  padding: 3px;
+  background: var(--surface-raised);
+  border-radius: 9px;
+  border: 1px solid var(--line);
+}
+.wallpaper-source-tab {
+  flex: 1;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.16s ease;
+  text-align: center;
+}
+.wallpaper-source-tab:hover { color: var(--text); }
+.wallpaper-source-tab.is-active {
+  background: var(--surface-soft);
+  color: var(--text);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+:root[data-theme="dark"] .wallpaper-source-tab.is-active { background: #2a2c34; }
+
+/* 精选画廊 */
+.curated-wallpapers-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.curated-wallpaper-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 5px;
+  border: 1.5px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 600;
+  transition: all 0.16s ease;
+}
+.curated-wallpaper-item:hover,
+.curated-wallpaper-item.is-active {
+  color: var(--text);
+  border-color: var(--accent);
+  background: var(--surface-raised);
+}
+.curated-thumb {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  border-radius: 6px;
+  background-size: cover;
+  background-position: center;
+  border: 1px solid var(--line-strong);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+
+/* 每日必应卡片 */
+.bing-wallpaper-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 10px;
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+}
+.bing-preview-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.bing-preview-img {
+  width: 80px;
+  height: 50px;
+  border-radius: 7px;
+  background-size: cover;
+  background-position: center;
+  background-color: var(--surface-soft);
+  flex-shrink: 0;
+  border: 1px solid var(--line-strong);
+}
+.bing-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.bing-info strong {
+  font-size: 12px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bing-copyright {
+  font-size: 10px;
+  color: var(--text-muted);
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* 本地上传卡片 */
+.custom-upload-box {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.custom-preview-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  border-radius: 10px;
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+}
+.custom-thumb {
+  width: 70px;
+  height: 44px;
+  border-radius: 7px;
+  background-size: cover;
+  background-position: center;
+  background-color: var(--surface-soft);
+  border: 1px solid var(--line-strong);
+  flex-shrink: 0;
+}
+.custom-thumb-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.custom-thumb-title {
+  font-size: 11px;
+  font-weight: 650;
+  color: var(--text);
+}
 .wallpaper-status { color: var(--text-muted); font-size: 10px; line-height: 1.4; }
 .wallpaper-status.is-error { color: var(--danger); }
-.wallpaper-upload-button { min-height: 32px; padding: 0 12px; flex: none; font-size: 11px; }
+.custom-upload-actions {
+  display: flex;
+  gap: 8px;
+}
+.wallpaper-upload-button { min-height: 32px; padding: 0 12px; font-size: 11px; }
+
+/* 画面调节 (模糊与遮罩) */
 .wallpaper-adjustments { display: grid; gap: 11px; margin-top: 12px; padding-top: 11px; border-top: 1px solid var(--line); }
-.wallpaper-range-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) 40px; align-items: center; gap: 10px; color: var(--text-secondary); font-size: 11px; }
-.wallpaper-range-row input[type="range"] { width: 100%; min-width: 0; accent-color: var(--text-secondary); }
+.wallpaper-range-row { display: grid; grid-template-columns: 56px minmax(0, 1fr) 40px; align-items: center; gap: 10px; color: var(--text-secondary); font-size: 11px; }
+.wallpaper-range-row input[type="range"] { width: 100%; min-width: 0; accent-color: var(--accent); }
 .wallpaper-range-row output { color: var(--text-muted); font-size: 10px; font-variant-numeric: tabular-nums; text-align: right; }
+
+/* 高级质感扩展 (点阵网格与卡片毛玻璃开关) */
+.wallpaper-extra-effects {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.appearance-switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 2px;
+}
+.switch-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.switch-meta strong {
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--text);
+}
+.switch-meta small {
+  font-size: 10.5px;
+  color: var(--text-muted);
+}
+.appearance-toggle-switch {
+  width: 40px;
+  height: 22px;
+  border-radius: 11px;
+  background: var(--line-strong);
+  position: relative;
+  border: none;
+  cursor: pointer;
+  padding: 2px;
+  transition: background 0.2s ease;
+  flex-shrink: 0;
+}
+.appearance-toggle-switch[aria-checked="true"] {
+  background: var(--accent);
+}
+.toggle-knob {
+  display: block;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.appearance-toggle-switch[aria-checked="true"] .toggle-knob {
+  transform: translateX(18px);
+}
 
 @media (max-width: 560px) {
   .wallpaper-mode-grid { gap: 6px; }
   .wallpaper-mode-button { padding: 6px 4px; }
   .wallpaper-option-row { align-items: flex-start; flex-direction: column; gap: 8px; }
   .wallpaper-gradient-options { justify-content: flex-start; }
-  .wallpaper-image-row { align-items: stretch; }
+  .curated-wallpapers-grid { grid-template-columns: repeat(2, 1fr); }
   .wallpaper-upload-button { align-self: flex-start; }
 }
 
