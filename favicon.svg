@@ -1,43 +1,35 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <defs>
-    <!-- 1. 璀璨通透的极光主底色 (Electric Aurora) -->
+    <!-- 1. 璀璨通透的极光主底色 (Electric Aurora) - 充满画布，无外边框 -->
     <linearGradient id="aurora-bg" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#1D4ED8"/>
       <stop offset="25%" stop-color="#4F46E5"/>
-      <stop offset="60%" stop-color="#7C3AED"/>
-      <stop offset="85%" stop-color="#C026D3"/>
+      <stop offset="58%" stop-color="#7C3AED"/>
+      <stop offset="82%" stop-color="#C026D3"/>
       <stop offset="100%" stop-color="#F43F5E"/>
     </linearGradient>
 
     <!-- 2. 环境光源高光与辉光 (Ambient Specular Glow) -->
-    <radialGradient id="top-flare" cx="20%" cy="16%" r="65%">
-      <stop offset="0%" stop-color="#38BDF8" stop-opacity="0.75"/>
-      <stop offset="35%" stop-color="#818CF8" stop-opacity="0.25"/>
+    <radialGradient id="top-flare" cx="18%" cy="14%" r="65%">
+      <stop offset="0%" stop-color="#38BDF8" stop-opacity="0.6"/>
+      <stop offset="35%" stop-color="#818CF8" stop-opacity="0.2"/>
       <stop offset="100%" stop-color="#4F46E5" stop-opacity="0"/>
     </radialGradient>
 
-    <radialGradient id="bottom-glow" cx="85%" cy="85%" r="60%">
-      <stop offset="0%" stop-color="#FB7185" stop-opacity="0.6"/>
-      <stop offset="45%" stop-color="#F43F5E" stop-opacity="0.2"/>
+    <radialGradient id="bottom-glow" cx="88%" cy="88%" r="60%">
+      <stop offset="0%" stop-color="#FB7185" stop-opacity="0.5"/>
+      <stop offset="45%" stop-color="#F43F5E" stop-opacity="0.15"/>
       <stop offset="100%" stop-color="#7C3AED" stop-opacity="0"/>
     </radialGradient>
 
-    <!-- 3. 超椭圆晶莹微光内边框 -->
-    <linearGradient id="rim-light" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.7"/>
-      <stop offset="35%" stop-color="#BAE6FD" stop-opacity="0.3"/>
-      <stop offset="70%" stop-color="#FBCFE8" stop-opacity="0.25"/>
-      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.6"/>
-    </linearGradient>
-
-    <!-- 4. 书签左翼 (高光白玉立体面) -->
+    <!-- 3. 书签左翼 (高光白玉立体面) -->
     <linearGradient id="mark-left" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#FFFFFF"/>
       <stop offset="60%" stop-color="#F8FAFC"/>
       <stop offset="100%" stop-color="#EEF2F6"/>
     </linearGradient>
 
-    <!-- 5. 书签右翼 (折光幻彩立体面: 映衬极光) -->
+    <!-- 4. 书签右翼 (折光幻彩立体面: 柔和冷紫) -->
     <linearGradient id="mark-right" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#F1F5F9"/>
       <stop offset="30%" stop-color="#E0E7FF"/>
@@ -45,7 +37,7 @@
       <stop offset="100%" stop-color="#FCE7F3"/>
     </linearGradient>
 
-    <!-- 6. 璀璨宝石星标: 绚丽金橙与极光紫红碰撞 -->
+    <!-- 5. 璀璨宝石星标: 绚丽金橙与极光紫红碰撞 -->
     <linearGradient id="gem-star" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#FDE047"/>
       <stop offset="30%" stop-color="#FB923C"/>
@@ -53,7 +45,7 @@
       <stop offset="100%" stop-color="#C026D3"/>
     </linearGradient>
 
-    <!-- 7. Dock 能量流光梁 -->
+    <!-- 6. Dock 能量流光梁 -->
     <linearGradient id="dock-beam" x1="0%" y1="0%" x2="100%" y2="0%">
       <stop offset="0%" stop-color="#00F2FE"/>
       <stop offset="30%" stop-color="#38BDF8"/>
@@ -62,23 +54,27 @@
       <stop offset="100%" stop-color="#FB7185"/>
     </linearGradient>
 
-    <!-- 8. 投影 -->
+    <!-- 7. 投影滤镜 -->
     <filter id="shadow-mark" x="-25%" y="-20%" width="150%" height="150%">
-      <feDropShadow dx="0" dy="18" stdDeviation="16" flood-color="#090D16" flood-opacity="0.45"/>
-      <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#1E1B4B" flood-opacity="0.3"/>
+      <feDropShadow dx="0" dy="16" stdDeviation="14" flood-color="#090D16" flood-opacity="0.45"/>
+      <feDropShadow dx="0" dy="5" stdDeviation="5" flood-color="#1E1B4B" flood-opacity="0.3"/>
     </filter>
 
     <filter id="shadow-dock" x="-20%" y="-30%" width="140%" height="180%">
-      <feDropShadow dx="0" dy="14" stdDeviation="14" flood-color="#0284C7" flood-opacity="0.35"/>
-      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#0F172A" flood-opacity="0.4"/>
+      <feDropShadow dx="0" dy="12" stdDeviation="12" flood-color="#0284C7" flood-opacity="0.35"/>
+      <feDropShadow dx="0" dy="5" stdDeviation="7" flood-color="#0F172A" flood-opacity="0.4"/>
+    </filter>
+
+    <!-- 8. Dock 霓虹漫射柔光滤镜 -->
+    <filter id="dock-neon-glow" x="-30%" y="-80%" width="160%" height="260%">
+      <feGaussianBlur stdDeviation="12"/>
     </filter>
   </defs>
 
-  <!-- ==================== 1. 底板与多光源光斑 ==================== -->
-  <rect x="16" y="16" width="480" height="480" rx="112" fill="url(#aurora-bg)"/>
-  <rect x="16" y="16" width="480" height="480" rx="112" fill="url(#top-flare)"/>
-  <rect x="16" y="16" width="480" height="480" rx="112" fill="url(#bottom-glow)"/>
-  <rect x="18" y="18" width="476" height="476" rx="110" fill="none" stroke="url(#rim-light)" stroke-width="3"/>
+  <!-- ==================== 1. 底板与多光源光斑 (充满 512x512，无白色描边) ==================== -->
+  <rect x="0" y="0" width="512" height="512" rx="115" fill="url(#aurora-bg)"/>
+  <rect x="0" y="0" width="512" height="512" rx="115" fill="url(#top-flare)"/>
+  <rect x="0" y="0" width="512" height="512" rx="115" fill="url(#bottom-glow)"/>
 
   <!-- ==================== 2. MARK (立体折光书签) ==================== -->
   <g filter="url(#shadow-mark)">
@@ -86,7 +82,7 @@
     <path d="M176 96 C176 82 187 72 201 72 H311 C325 72 336 82 336 96 V332 C336 341 326 346 319 341 L256 295 L193 341 C186 346 176 341 176 332 Z" 
           fill="#0F172A" opacity="0.35"/>
 
-    <!-- 书签左翼 (主受光面, x: 168 -> 256) -->
+    <!-- 书签左翼 (主受光面) -->
     <path d="M168 94 
              C168 81.85 177.85 72 190 72 
              H256 
@@ -96,7 +92,7 @@
              Z" 
           fill="url(#mark-left)"/>
 
-    <!-- 书签右翼 (立体折射面, x: 256 -> 344) -->
+    <!-- 书签右翼 (立体折射面) -->
     <path d="M256 72 
              H322 
              C334.15 72 344 81.85 344 94 
@@ -106,28 +102,23 @@
              Z" 
           fill="url(#mark-right)"/>
 
-    <!-- 折线中央微阴影分界线 (突出立体折痕) -->
-    <line x1="256" y1="72" x2="256" y2="295" stroke="#CBD5E1" stroke-width="1.2" opacity="0.6"/>
+    <!-- 折线中央微阴影分界线 -->
+    <line x1="256" y1="72" x2="256" y2="295" stroke="#CBD5E1" stroke-width="1.2" opacity="0.5"/>
 
-    <!-- 书签整体晶莹微边框 -->
-    <path d="M168 94 C168 81.85 177.85 72 190 72 H322 C334.15 72 344 81.85 344 94 V340 C344 348 337 352.8 330.2 348 L256 295 L181.8 348 C175 352.8 168 348 168 340 Z" 
-          fill="none" stroke="#FFFFFF" stroke-opacity="0.75" stroke-width="2"/>
-
-    <!-- 书签上部穿绳/精致刻度条 (增加现代产品细节) -->
-    <rect x="204" y="96" width="104" height="6" rx="3" fill="#6366F1" fill-opacity="0.18"/>
+    <!-- 书签上部精致横饰线 -->
+    <rect x="204" y="96" width="104" height="6" rx="3" fill="#6366F1" fill-opacity="0.16"/>
 
     <!-- 书签中心: 璀璨宝石四芒星 (Gem Compass Star) -->
-    <!-- 星标发光底层 -->
-    <circle cx="256" cy="180" r="42" fill="#FFFFFF" opacity="0.5"/>
-    <circle cx="256" cy="180" r="32" fill="#A855F7" opacity="0.18"/>
+    <circle cx="256" cy="180" r="42" fill="#FFFFFF" opacity="0.45"/>
+    <circle cx="256" cy="180" r="30" fill="#A855F7" opacity="0.18"/>
 
-    <!-- 四角主光芒 (立体晶体宝石感) -->
+    <!-- 四角主光芒 -->
     <path d="M256 128 L270 166 L308 180 L270 194 L256 232 L242 194 L204 180 L242 166 Z" 
           fill="url(#gem-star)"/>
 
-    <!-- 星标左上半高光刻面 (宝石切面质感) -->
+    <!-- 星标左上半高光切面 -->
     <path d="M256 128 L270 166 L256 180 L242 166 Z M204 180 L242 166 L256 180 L242 194 Z" 
-          fill="#FFFFFF" opacity="0.45"/>
+          fill="#FFFFFF" opacity="0.4"/>
 
     <!-- 耀眼星核 -->
     <circle cx="256" cy="180" r="6" fill="#FFFFFF"/>
@@ -137,25 +128,20 @@
   <!-- ==================== 3. DOCK (弧形流光停泊坞) ==================== -->
   <g filter="url(#shadow-dock)">
     <!-- 坞台底部极光霓虹漫射 -->
-    <ellipse cx="256" cy="402" rx="160" ry="26" fill="#00F2FE" opacity="0.4" filter="blur(18px)"/>
+    <ellipse cx="256" cy="402" rx="160" ry="26" fill="#00F2FE" opacity="0.35" filter="url(#dock-neon-glow)"/>
 
-    <!-- 停泊坞基座主体 (深色半透明雾面玻璃, 优雅托盘) -->
-    <rect x="100" y="378" width="312" height="48" rx="24" fill="#0F172A" fill-opacity="0.42"/>
-    <rect x="101" y="379" width="310" height="46" rx="23" fill="none" stroke="#FFFFFF" stroke-opacity="0.38" stroke-width="2"/>
+    <!-- 停泊坞基座主体 (深色半透明雾面玻璃) -->
+    <rect x="100" y="378" width="312" height="48" rx="24" fill="#0F172A" fill-opacity="0.45"/>
 
     <!-- 停泊坞核心能量光条 (Neon Beam) -->
     <rect x="120" y="385" width="272" height="10" rx="5" fill="url(#dock-beam)"/>
-    <!-- 光条中心极光白高光 -->
-    <rect x="190" y="386.5" width="132" height="4" rx="2" fill="#FFFFFF" opacity="0.9"/>
+    <rect x="190" y="386.5" width="132" height="4" rx="2" fill="#FFFFFF" opacity="0.85"/>
 
-    <!-- 3 颗精心雕琢的 Dock 状态指示光环 (象征多任务/多书签停泊) -->
-    <!-- 左光环 -->
+    <!-- 3 颗 Dock 状态指示光环 -->
     <circle cx="180" cy="408" r="6" fill="#00F2FE"/>
     <circle cx="180" cy="408" r="2.5" fill="#FFFFFF"/>
-    <!-- 中光环 (大核，对齐书签中轴) -->
     <circle cx="256" cy="408" r="7.5" fill="#FFFFFF"/>
     <circle cx="256" cy="408" r="3.5" fill="#6366F1"/>
-    <!-- 右光环 -->
     <circle cx="332" cy="408" r="6" fill="#F43F5E"/>
     <circle cx="332" cy="408" r="2.5" fill="#FFFFFF"/>
   </g>
