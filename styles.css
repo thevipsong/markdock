@@ -1,5 +1,5 @@
 /* ==========================================================================
-   拾页 · 双主题设计系统
+   MarkDock 书签坞 · 双主题设计系统
    界面主题限定为暗黑与白色，使用统一的灰阶表面与文字
    ========================================================================== */
 
@@ -2357,17 +2357,22 @@ html, body { font-family: var(--font-ui); }
   box-shadow: var(--nav-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.035);
 }
 .brand-mark {
-  overflow: hidden;
-  color: #f4f4f1;
-  background: #17181b;
+  overflow: visible;
+  background: transparent;
   box-shadow: none;
+  filter: drop-shadow(0 3px 8px rgba(79, 70, 229, 0.28));
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), filter 0.2s ease;
+}
+.brand-mark:hover {
+  transform: translateY(-1px) scale(1.04);
+  filter: drop-shadow(0 5px 12px rgba(79, 70, 229, 0.42));
 }
 :root[data-theme="light"] .brand-mark {
-  color: #f4f4f1;
-  background: #17181b;
+  background: transparent;
   box-shadow: none;
+  filter: drop-shadow(0 3px 8px rgba(79, 70, 229, 0.22));
 }
-.brand-mark img { width: 100%; height: 100%; display: block; object-fit: cover; }
+.brand-mark img { width: 100%; height: 100%; display: block; object-fit: contain; }
 
 .button-primary {
   color: var(--accent-on, #101113);
@@ -4319,3 +4324,57 @@ button, .button, .tab, .bookmark-title { font-weight: 620; }
   .command-dialog { padding: 11px; }
   .command-dialog-footer { font-size: 9px; }
 }
+
+/* ==========================================================================
+   Drag & Drop, Quick Copy & Dark Mode Favicon Refinement (MarkDock 2.1)
+   ========================================================================== */
+.bookmark[draggable="true"] {
+  cursor: grab;
+}
+.bookmark[draggable="true"]:active {
+  cursor: grabbing;
+}
+.bookmark.is-dragging {
+  opacity: 0.45;
+  transform: scale(0.98);
+  border-color: var(--accent-border) !important;
+}
+.nav-node-row.is-drop-target .nav-folder-tab,
+.bookmark-group-heading.is-drop-target {
+  background: var(--accent-soft) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+  box-shadow: 0 0 0 2px var(--accent-soft);
+  border-radius: 9px;
+}
+.bookmark.is-drop-before {
+  box-shadow: -3px 0 0 0 var(--accent), var(--card-shadow);
+}
+.bookmark.is-drop-after {
+  box-shadow: 3px 0 0 0 var(--accent), var(--card-shadow);
+}
+.content[data-view-mode="list"] .bookmark.is-drop-before {
+  box-shadow: 0 -2px 0 0 var(--accent);
+}
+.content[data-view-mode="list"] .bookmark.is-drop-after {
+  box-shadow: 0 2px 0 0 var(--accent);
+}
+
+.mini-button.copy-url-button.is-copied {
+  color: var(--success) !important;
+  background: var(--success-soft) !important;
+  opacity: 1 !important;
+}
+
+.sort-settings-wrap .sort-settings-menu {
+  min-width: 156px;
+}
+
+:root[data-theme="dark"] .bookmark-favicon-wrap[data-icon-surface="light"] {
+  background: rgba(242, 243, 245, 0.9) !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16), 0 2px 6px rgba(0, 0, 0, 0.28) !important;
+}
+:root[data-theme="dark"] .bookmark-favicon-wrap[data-icon-surface="light"] .bookmark-favicon {
+  filter: brightness(0.95) contrast(1.02);
+}
+

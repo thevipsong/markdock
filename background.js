@@ -1,6 +1,110 @@
 const openingProfiles = new Map();
+const MENU_SAVE_PAGE = "markdock-save-page";
+const MENU_SAVE_LINK = "markdock-save-link";
+const MENU_OPEN_GALLERY = "markdock-open-gallery";
 
-chrome.action.onClicked.addListener((clickedTab) => {
+function setupContextMenus() {
+  if (!chrome.contextMenus) return;
+  chrome.contextMenus.removeAll(() => {
+    void chrome.runtime.lastError;
+    chrome.contextMenus.create({
+      id: MENU_SAVE_PAGE,
+      title: "将当前页面保存到 MarkDock 书签坞",
+      contexts: ["page"]
+    });
+    chrome.contextMenus.create({
+      id: MENU_SAVE_LINK,
+      title: "将此链接保存到 MarkDock 书签坞",
+      contexts: ["link"]
+    });
+    chrome.contextMenus.create({
+      id: MENU_OPEN_GALLERY,
+      title: "打开 MarkDock 书签坞工作台",
+      contexts: ["action"]
+    });
+  });
+}
+
+chrome.runtime.onInstalled.addListener(() => {
+  setupContextMenus();
+});
+
+chrome.runtime.onStartup?.addListener(() => {
+  setupContextMenus();
+});
+
+async function resolveDefaultBookmarkParentId() {
+  try {
+    const tree = await chrome.bookmarks.getTree();
+    const rootChildren = tree?.[0]?.children || [];
+    const bar = rootChildren.find((node) => node.folderType === "bookmarks-bar" || node.id === "1") || rootChildren[0];
+    return bar?.id || "1";
+  } catch {
+    return "1";
+  }
+}
+
+async function quickSaveBookmark(url, title) {
+  if (!url || !/^https?:\/\//i.test(url)) return null;
+  const parentId = await resolveDefaultBookmarkParentId();
+  const cleanTitle = String(title || "").trim() || new URL(url).hostname.replace(/^www\./, "");
+  try {
+    const existing = await chrome.bookmarks.search({ url });
+    if (existing && existing.length > 0) {
+      return { status: "exists", bookmark: existing[0] };
+    }
+    const created = await chrome.bookmarks.create({
+      parentId,
+      title: cleanTitle.slice(0, 512),
+      url
+    });
+    return { status: "created", bookmark: created };
+  } catch (error) {
+    console.error("MarkDock 快速保存书签失败", error);
+    return null;
+  }
+}
+
+function flashBadge(text, color = "#76549f") {
+  if (!chrome.action?.setBadgeText) return;
+  chrome.action.setBadgeBackgroundColor?.({ color });
+  chrome.action.setBadgeText({ text });
+  setTimeout(() => {
+    chrome.action.setBadgeText({ text: "" });
+  }, 1800);
+}
+
+chrome.contextMenus?.onClicked.addListener(async (info, tab) => {
+  if (info.menuItemId === MENU_OPEN_GALLERY) {
+    await triggerOpenGallery(tab);
+    return;
+  }
+  if (info.menuItemId === MENU_SAVE_LINK && info.linkUrl) {
+    const res = await quickSaveBookmark(info.linkUrl, info.selectionText || info.linkUrl);
+    if (res) flashBadge(res.status === "created" ? "✓" : "已存");
+    return;
+  }
+  if (info.menuItemId === MENU_SAVE_PAGE) {
+    const pageUrl = info.pageUrl || tab?.url;
+    const pageTitle = tab?.title || pageUrl;
+    const res = await quickSaveBookmark(pageUrl, pageTitle);
+    if (res) flashBadge(res.status === "created" ? "✓" : "已存");
+  }
+});
+
+chrome.commands?.onCommand.addListener(async (command, tab) => {
+  if (command === "quick-bookmark-current-page") {
+    const pageUrl = tab?.url;
+    if (pageUrl && /^https?:\/\//i.test(pageUrl)) {
+      const res = await quickSaveBookmark(pageUrl, tab?.title || pageUrl);
+      if (res) flashBadge(res.status === "created" ? "✓" : "已存");
+    } else {
+      await triggerOpenGallery(tab);
+    }
+  }
+});
+
+function triggerOpenGallery(clickedTab) {
   const incognito = Boolean(clickedTab?.incognito);
   const activeOpen = openingProfiles.get(incognito);
   if (activeOpen) return activeOpen;
@@ -11,7 +115,9 @@ chrome.action.onClicked.addListener((clickedTab) => {
     .finally(() => openingProfiles.delete(incognito));
   openingProfiles.set(incognito, opening);
   return opening;
-});
+}
+
+chrome.action.onClicked.addListener((clickedTab) => triggerOpenGallery(clickedTab));
 
 async function openGallery(incognito, preferredWindowId) {
   const targetUrl = chrome.runtime.getURL("index.html");

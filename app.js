@@ -549,6 +549,98 @@
     }
   }
 
+  const FAVICON_MISS_STORAGE_KEY = "qidian-favicon-miss-v1";
+  const FAVICON_MISS_TTL_MS = 24 * 60 * 60 * 1000;
+  const faviconMissMap = new Map();
+  try {
+    const rawMisses = JSON.parse(localStorage.getItem(FAVICON_MISS_STORAGE_KEY) || "[]");
+    const now = Date.now();
+    if (Array.isArray(rawMisses)) {
+      for (const [dir, expiresAt] of rawMisses) {
+        if (typeof dir === "string" && typeof expiresAt === "number" && expiresAt > now) {
+          faviconMissMap.set(dir, expiresAt);
+        }
+      }
+    }
+  } catch { /* ignore */ }
+
+  function persistFaviconMisses() {
+    try {
+      const now = Date.now();
+      const entries = [...faviconMissMap.entries()]
+        .filter(([, exp]) => exp > now)
+        .slice(-400);
+      localStorage.setItem(FAVICON_MISS_STORAGE_KEY, JSON.stringify(entries));
+    } catch { /* ignore */ }
+  }
+
+  let iconIdbPromise = null;
+  function openIconDatabase() {
+    if (iconIdbPromise) return iconIdbPromise;
+    if (typeof indexedDB === "undefined") return Promise.resolve(null);
+    iconIdbPromise = new Promise((resolve) => {
+      try {
+        const req = indexedDB.open("markdock-icon-cache-v1", 1);
+        req.onupgradeneeded = () => {
+          if (!req.result.objectStoreNames.contains("icons")) {
+            req.result.createObjectStore("icons");
+          }
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => resolve(null);
+      } catch {
+        resolve(null);
+      }
+    });
+    return iconIdbPromise;
+  }
+
+  async function saveIconToIdb(key, payload) {
+    const db = await openIconDatabase();
+    if (!db) return;
+    try {
+      const tx = db.transaction("icons", "readwrite");
+      tx.objectStore("icons").put(payload, String(key));
+    } catch { /* ignore */ }
+  }
+
+  async function hydrateIconsFromIdb() {
+    const db = await openIconDatabase();
+    if (!db) return;
+    try {
+      const tx = db.transaction("icons", "readonly");
+      const store = tx.objectStore("icons");
+      const keysReq = store.getAllKeys();
+      const valsReq = store.getAll();
+      keysReq.onsuccess = () => {
+        valsReq.onsuccess = () => {
+          const keys = keysReq.result || [];
+          const vals = valsReq.result || [];
+          let updated = false;
+          keys.forEach((k, idx) => {
+            const val = vals[idx];
+            if (val && validIcon(val.icon) && safeUrl(val.url)) {
+              const strKey = String(k);
+              if (!chromeIconOverrides.has(strKey)) {
+                chromeIconOverrides.set(strKey, { url: safeUrl(val.url), icon: val.icon });
+                updated = true;
+              }
+            }
+          });
+          if (updated) {
+            for (const item of state.items) {
+              if (item.source === "chrome" && !item.icon) {
+                const hydrated = chromeIconForBookmark(item.chromeId, item.url);
+                if (hydrated) item.icon = hydrated;
+              }
+            }
+            render({ refreshNavigation: false });
+          }
+        };
+      };
+    } catch { /* ignore */ }
+  }
+
   function validIcon(value) {
     return typeof value === "string"
       && value.length <= MAX_ICON_DATA_URL_CHARS
@@ -577,7 +669,9 @@
     if (!item?.chromeId || !validIcon(icon)) return false;
     const url = safeUrl(item.url);
     if (!url) return false;
-    chromeIconOverrides.set(String(item.chromeId), { url, icon });
+    const payload = { url, icon };
+    chromeIconOverrides.set(String(item.chromeId), payload);
+    void saveIconToIdb(item.chromeId, payload);
     return true;
   }
 
@@ -675,22 +769,19 @@
     try {
       const parsed = new URL(rawUrl);
       if (!["http:", "https:"].includes(parsed.protocol)) return Promise.resolve(null);
-      // Resolve icons relative to the bookmarked app directory. A NAS or
-      // reverse proxy can host unrelated apps on one origin; sharing a root
-      // favicon cache entry makes those bookmarks display the wrong brand.
       bookmarkDirectory = faviconDirectoryForUrl(parsed);
-      // Many sites keep their only high-resolution icon at the origin root,
-      // even when the bookmark points into a nested app or a route without an
-      // explicit file extension. Prefer a scoped icon when present, then use
-      // the root icon as a fallback instead of silently keeping a tiny favicon.
       faviconDirectories = [...new Set([bookmarkDirectory, `${parsed.origin}/`])];
     } catch {
       return Promise.resolve(null);
     }
+    const missExpiry = faviconMissMap.get(bookmarkDirectory);
+    if (missExpiry && missExpiry > Date.now()) {
+      return Promise.resolve(null);
+    }
+    if (missExpiry) faviconMissMap.delete(bookmarkDirectory);
+
     const cached = highResolutionFaviconCache.get(bookmarkDirectory);
     if (cached && (cached.expiresAt === Infinity || cached.expiresAt > Date.now())) {
-      // Map insertion order doubles as an LRU list, so visiting a frequently
-      // used app directory keeps its pending/result entry while old entries can go.
       if (cached.expiresAt === Infinity) cached.consumers.add(isConsumerActive);
       highResolutionFaviconCache.delete(bookmarkDirectory);
       highResolutionFaviconCache.set(bookmarkDirectory, cached);
@@ -738,8 +829,6 @@
                 if (value === null) image.removeAttribute("src");
                 resolve(value);
               };
-              // Share the four-second budget across both scoped and root paths,
-              // so a slow missing icon cannot starve later fallbacks.
               const timer = setTimeout(() => finish(null), probeTimeout);
               image.decoding = "async";
               image.referrerPolicy = "no-referrer";
@@ -763,13 +852,8 @@
               bestIcon = candidate;
               bestSize = candidate.size;
             }
-            // Favicons render at roughly 20px in cards; 96px is already a sharp
-            // source for high-density displays, so avoid probing every fallback
-            // path once a suitably detailed image has been found.
             if (bestSize >= PREFERRED_HIGH_RESOLUTION_FAVICON_SIZE) break;
           }
-          // A path-specific icon belongs to the bookmarked app. Only consult
-          // the origin-wide icon when the app directory had no usable artwork.
           if (bestIcon) return bestIcon;
         }
         return null;
@@ -792,10 +876,11 @@
         highResolutionFaviconCache.delete(bookmarkDirectory);
         return;
       }
-      // Keep successful matches for the current browsing session, but retry a
-      // failed lookup later so a temporary offline or timeout result is not
-      // cached until the extension page is reloaded.
-      entry.expiresAt = Date.now() + (source ? 10 * 60_000 : 15_000);
+      if (!source && navigator.onLine !== false) {
+        faviconMissMap.set(bookmarkDirectory, Date.now() + FAVICON_MISS_TTL_MS);
+        persistFaviconMisses();
+      }
+      entry.expiresAt = Date.now() + (source ? 10 * 60_000 : 60_000);
     });
     return lookup;
   }
@@ -1456,6 +1541,7 @@
         event.stopPropagation();
         showFolderContextMenu(node, event.clientX, event.clientY, select);
       });
+      setupFolderDropTarget(row, node.path, node.folderId);
       row.append(disclosure, select, more);
       wrapper.append(row);
 
@@ -1475,6 +1561,124 @@
     };
     for (const node of tree) treeWrap.append(renderNode(node, 0, null));
     refs.tabs.append(treeWrap);
+  }
+
+  let activeDraggedBookmarkIds = [];
+
+  function clearDragVisuals() {
+    $$(".is-dragging, .is-drop-target, .is-drop-before, .is-drop-after").forEach((el) => {
+      el.classList.remove("is-dragging", "is-drop-target", "is-drop-before", "is-drop-after");
+    });
+  }
+
+  function setupFolderDropTarget(element, destinationPath, targetFolderId = null) {
+    if (!element || !Array.isArray(destinationPath) || !destinationPath.length) return;
+    element.addEventListener("dragover", (event) => {
+      if (!activeDraggedBookmarkIds.length) return;
+      event.preventDefault();
+      event.stopPropagation();
+      event.dataTransfer.dropEffect = "move";
+      element.classList.add("is-drop-target");
+    });
+    element.addEventListener("dragleave", (event) => {
+      if (!element.contains(event.relatedTarget)) {
+        element.classList.remove("is-drop-target");
+      }
+    });
+    element.addEventListener("drop", async (event) => {
+      if (!activeDraggedBookmarkIds.length) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const idsToMove = [...activeDraggedBookmarkIds];
+      activeDraggedBookmarkIds = [];
+      clearDragVisuals();
+      await moveBookmarksByDrag(idsToMove, destinationPath, targetFolderId);
+    });
+  }
+
+  async function moveBookmarksByDrag(bookmarkIds, destinationPath, explicitChromeFolderId = null, beforeItem = null, placeAfter = false) {
+    const items = bookmarkIds
+      .map((idVal) => state.items.find((entry) => entry.id === idVal))
+      .filter(Boolean);
+    if (!items.length || !Array.isArray(destinationPath) || !destinationPath.length) return;
+
+    try {
+      const chromeItems = items.filter((item) => item.source === "chrome");
+      if (EXTENSION_MODE && chromeItems.length) {
+        let targetChromeFolderId = explicitChromeFolderId ? String(explicitChromeFolderId) : null;
+        if (!targetChromeFolderId && beforeItem?.source === "chrome" && beforeItem.parentId) {
+          targetChromeFolderId = String(beforeItem.parentId);
+        }
+        if (!targetChromeFolderId) {
+          const matchedNode = navigationNodeAtPath(destinationPath);
+          if (matchedNode?.folderId) targetChromeFolderId = String(matchedNode.folderId);
+        }
+        if (!targetChromeFolderId) {
+          let parentId = [...chromeFolders.values()].find(isChromeBookmarksBarFolder)?.id || "1";
+          const folderIdsByPath = new Map();
+          for (const folder of chromeFolders.values()) {
+            const chain = getChromeFolderNodes({ parentId: folder.id });
+            const folderPath = chain.length && isChromeBookmarksBarFolder(chain[0])
+              ? folder.path.slice(1)
+              : folder.path;
+            if (folderPath.length) folderIdsByPath.set(JSON.stringify(folderPath), String(folder.id));
+          }
+          const traversed = [];
+          for (const segment of destinationPath) {
+            traversed.push(segment);
+            const key = JSON.stringify(traversed);
+            if (folderIdsByPath.has(key)) {
+              parentId = folderIdsByPath.get(key);
+            } else {
+              const created = await chrome.bookmarks.create({ parentId, title: segment });
+              parentId = String(created.id);
+              folderIdsByPath.set(key, parentId);
+            }
+          }
+          targetChromeFolderId = parentId;
+        }
+        for (const item of chromeItems) {
+          const moveSpec = { parentId: String(targetChromeFolderId) };
+          if (beforeItem?.source === "chrome" && typeof beforeItem.index === "number" && String(beforeItem.parentId) === String(targetChromeFolderId)) {
+            moveSpec.index = placeAfter ? beforeItem.index + 1 : beforeItem.index;
+          }
+          await chrome.bookmarks.move(String(item.chromeId), moveSpec);
+        }
+      }
+
+      let localChanged = false;
+      for (const item of items) {
+        if (item.source !== "chrome") {
+          item.path = [...destinationPath];
+          item.category = destinationPath[0] || "未分类";
+          item.group = destinationPath.length > 1 ? destinationPath.slice(1).join(" / ") : "常用书签";
+          localChanged = true;
+        }
+      }
+
+      if (beforeItem && items.every((entry) => entry.id !== beforeItem.id)) {
+        const movingSet = new Set(items.map((entry) => entry.id));
+        const remaining = state.items.filter((entry) => !movingSet.has(entry.id));
+        const anchorIdx = remaining.findIndex((entry) => entry.id === beforeItem.id);
+        if (anchorIdx >= 0) {
+          remaining.splice(placeAfter ? anchorIdx + 1 : anchorIdx, 0, ...items);
+          state.items = remaining;
+          if (items.some((entry) => entry.source !== "chrome")) localChanged = true;
+        }
+      }
+
+      if (localChanged) persist();
+      if (EXTENSION_MODE && chromeItems.length) {
+        await syncChromeBookmarks();
+      } else {
+        render();
+      }
+      toast(beforeItem
+        ? `已调整书签顺序并归入“${destinationPath.at(-1)}”`
+        : `已将 ${items.length} 个书签移至“${destinationPath.join(" › ")}”`);
+    } catch (error) {
+      toast(`拖拽移动失败：${error?.message || "请重试"}`, true);
+    }
   }
 
   function selectedNavigationPath() {
@@ -1800,26 +2004,57 @@
     const tools = document.createElement("div");
     tools.className = "content-heading-tools";
 
-    const sortLabel = document.createElement("label");
-    sortLabel.className = "toolbar-select-wrap";
-    const sortLabelText = document.createElement("span");
-    sortLabelText.className = "sr-only";
-    sortLabelText.textContent = "书签排序方式";
-    const sortSelect = document.createElement("select");
-    sortSelect.className = "toolbar-select";
-    sortSelect.setAttribute("aria-label", "书签排序方式");
-    for (const [value, label] of [
-      ["default", "默认顺序"], ["name", "名称 A–Z"], ["recent", "最近添加"], ["domain", "网站域名"]
-    ]) {
-      const option = new Option(label, value, false, state.sortMode === value);
-      sortSelect.add(option);
-    }
-    sortSelect.addEventListener("change", () => {
-      state.sortMode = sortSelect.value;
-      saveViewPreferences();
-      render({ refreshNavigation: false });
+    const checkSvg = `<svg viewBox="0 0 20 20" class="check-icon" aria-hidden="true"><path d="m4.5 10.2 3.5 3.4 7.5-7.4"/></svg>`;
+    const sortOptions = [
+      ["default", "默认顺序"],
+      ["name", "名称 A–Z"],
+      ["recent", "最近添加"],
+      ["domain", "网站域名"]
+    ];
+    const currentSortLabel = sortOptions.find(([val]) => val === state.sortMode)?.[1] || "默认顺序";
+
+    const sortWrap = document.createElement("div");
+    sortWrap.className = "sort-settings-wrap view-settings-wrap";
+
+    const sortButton = document.createElement("button");
+    sortButton.type = "button";
+    sortButton.className = "sort-settings-button view-settings-button";
+    sortButton.setAttribute("aria-haspopup", "true");
+    sortButton.setAttribute("aria-expanded", "false");
+    sortButton.setAttribute("aria-label", `书签排序方式：${currentSortLabel}`);
+    sortButton.title = "切换书签排序方式";
+    sortButton.innerHTML = `<svg viewBox="0 0 24 24" class="view-btn-icon" aria-hidden="true"><path d="M3 6h18M6 12h12M10 18h4"/></svg><span>${currentSortLabel}</span><svg viewBox="0 0 20 20" class="view-chevron" aria-hidden="true"><path d="m5 7.5 5 5 5-5"/></svg>`;
+
+    const sortMenu = document.createElement("div");
+    sortMenu.className = "sort-settings-menu view-settings-menu";
+    sortMenu.hidden = true;
+    sortMenu.innerHTML = `
+      <div class="view-menu-group-label">排序方式</div>
+      ${sortOptions.map(([val, label]) => `
+        <button type="button" class="view-menu-item${state.sortMode === val ? " is-active" : ""}" data-sort="${val}">
+          <span>${label}</span>
+          ${state.sortMode === val ? checkSvg : ""}
+        </button>
+      `).join("")}
+    `;
+
+    sortButton.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const open = sortMenu.hidden;
+      $$(".view-settings-menu").forEach((m) => { m.hidden = true; });
+      sortMenu.hidden = !open;
+      sortButton.setAttribute("aria-expanded", String(open));
     });
-    sortLabel.append(sortLabelText, sortSelect);
+
+    sortMenu.querySelectorAll("[data-sort]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        state.sortMode = btn.dataset.sort;
+        saveViewPreferences();
+        render({ refreshNavigation: false });
+      });
+    });
+
+    sortWrap.append(sortButton, sortMenu);
 
     const viewSettingsWrap = document.createElement("div");
     viewSettingsWrap.className = "view-settings-wrap";
@@ -1840,8 +2075,6 @@
     const viewMenu = document.createElement("div");
     viewMenu.className = "view-settings-menu";
     viewMenu.hidden = true;
-
-    const checkSvg = `<svg viewBox="0 0 20 20" class="check-icon" aria-hidden="true"><path d="m4.5 10.2 3.5 3.4 7.5-7.4"/></svg>`;
 
     viewMenu.innerHTML = `
       <div class="view-menu-group-label">布局方式</div>
@@ -1872,6 +2105,7 @@
     viewSettingsButton.addEventListener("click", (event) => {
       event.stopPropagation();
       const open = viewMenu.hidden;
+      $$(".view-settings-menu").forEach((m) => { m.hidden = true; });
       viewMenu.hidden = !open;
       viewSettingsButton.setAttribute("aria-expanded", String(open));
     });
@@ -1892,14 +2126,6 @@
       });
     });
 
-    const closeViewMenuHandler = (event) => {
-      if (!viewSettingsWrap.contains(event.target)) {
-        viewMenu.hidden = true;
-        viewSettingsButton.setAttribute("aria-expanded", "false");
-      }
-    };
-    document.addEventListener("click", closeViewMenuHandler);
-
     viewSettingsWrap.append(viewSettingsButton, viewMenu);
 
     const selectionToggle = document.createElement("button");
@@ -1909,7 +2135,7 @@
     selectionToggle.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="m8 12 2.5 2.5L16 9"/></svg><span>${state.selectionMode ? "完成" : "选择"}</span>`;
     selectionToggle.addEventListener("click", () => setSelectionMode(!state.selectionMode));
 
-    tools.append(sortLabel, viewSettingsWrap, selectionToggle);
+    tools.append(sortWrap, viewSettingsWrap, selectionToggle);
     toolbar.append(copy, tools);
     return toolbar;
   }
@@ -1958,7 +2184,7 @@
       section.className = "bookmark-group";
       const heading = document.createElement("div");
       heading.className = "bookmark-group-heading";
-      heading.title = group.path.join(" › ");
+      heading.title = `${group.path.join(" › ")}（可拖拽书签至此分组）`;
       const label = document.createElement("h3");
       label.textContent = selectedPath && JSON.stringify(group.path) === JSON.stringify(selectedPath)
         ? "当前文件夹"
@@ -1971,6 +2197,7 @@
       count.textContent = `· ${countNum}`;
       count.setAttribute("aria-label", `${group.totalCount} 个书签`);
       heading.append(label, count);
+      setupFolderDropTarget(heading, group.path, navigationNodeAtPath(group.path)?.folderId || null);
       section.append(heading, createBookmarkGrid(group.visibleItems, queryTokens));
       result.append(section);
     }
@@ -2012,11 +2239,10 @@
     if (refreshNavigation) renderTabs();
     refs.banner.hidden = state.mode !== "demo";
     if (refs.sidebarStorageStatus) {
-      refs.sidebarStorageStatus.textContent = EXTENSION_MODE
-        ? `${BOOKMARK_TERM}实时同步 · 可手动重试`
-        : state.mode === "demo"
-          ? "示例模式 · 导入或添加以保存"
-          : "本地网页模式 · 数据保存在浏览器";
+      const folderCount = flattenNavigationTree(buildNavigationTree()).length;
+      refs.sidebarStorageStatus.textContent = state.mode === "demo"
+        ? `示例模式 · ${state.items.length} 个演示书签`
+        : `${folderCount} 个文件夹 · ${state.items.length} 个${BOOKMARK_TERM}`;
     }
 
     const chromeCount = state.items.filter((item) => item.source === "chrome").length;
@@ -2129,9 +2355,57 @@
     const isSelected = state.selectedBookmarkIds.has(item.id);
     row.className = `bookmark bookmark-card${isSelected ? " is-selected" : ""}`;
     row.dataset.bookmarkId = item.id;
+    row.draggable = true;
     row.addEventListener("contextmenu", (event) => {
       event.preventDefault();
       showContextMenu(item, event.clientX, event.clientY, link);
+    });
+    row.addEventListener("dragstart", (event) => {
+      hideBookmarkTooltip();
+      hideContextMenu();
+      activeDraggedBookmarkIds = state.selectedBookmarkIds.has(item.id) && state.selectedBookmarkIds.size > 1
+        ? [...state.selectedBookmarkIds]
+        : [item.id];
+      row.classList.add("is-dragging");
+      if (event.dataTransfer) {
+        event.dataTransfer.effectAllowed = "move";
+        try { event.dataTransfer.setData("text/plain", item.title || item.url); } catch { /* ignore */ }
+      }
+    });
+    row.addEventListener("dragend", () => {
+      activeDraggedBookmarkIds = [];
+      clearDragVisuals();
+    });
+    row.addEventListener("dragover", (event) => {
+      if (!activeDraggedBookmarkIds.length || activeDraggedBookmarkIds.includes(item.id)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      event.dataTransfer.dropEffect = "move";
+      const rect = row.getBoundingClientRect();
+      const after = state.viewMode === "list"
+        ? (event.clientY > rect.top + rect.height / 2)
+        : (event.clientX > rect.left + rect.width / 2);
+      row.classList.toggle("is-drop-before", !after);
+      row.classList.toggle("is-drop-after", after);
+    });
+    row.addEventListener("dragleave", (event) => {
+      if (!row.contains(event.relatedTarget)) {
+        row.classList.remove("is-drop-before", "is-drop-after");
+      }
+    });
+    row.addEventListener("drop", async (event) => {
+      if (!activeDraggedBookmarkIds.length || activeDraggedBookmarkIds.includes(item.id)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const rect = row.getBoundingClientRect();
+      const placeAfter = state.viewMode === "list"
+        ? (event.clientY > rect.top + rect.height / 2)
+        : (event.clientX > rect.left + rect.width / 2);
+      const idsToMove = [...activeDraggedBookmarkIds];
+      activeDraggedBookmarkIds = [];
+      clearDragVisuals();
+      const targetPath = getNavigationPath(item);
+      await moveBookmarksByDrag(idsToMove, targetPath, item.parentId || null, item, placeAfter);
     });
 
     const selectButton = document.createElement("button");
@@ -2149,6 +2423,7 @@
 
     const link = document.createElement("a");
     link.className = "bookmark-link";
+    link.draggable = false;
     link.addEventListener("click", (event) => {
       if (!state.selectionMode) return;
       event.preventDefault();
@@ -2330,6 +2605,34 @@
     const actions = document.createElement("span");
     actions.className = `bookmark-actions${item.favorite && !isFavoritesView ? " favorite-always" : ""}`;
 
+    const copyBtn = document.createElement("button");
+    copyBtn.type = "button";
+    copyBtn.className = "mini-button copy-url-button";
+    copyBtn.dataset.bookmarkAction = "copy";
+    const copyIconSvg = `<svg viewBox="0 0 24 24" class="action-icon" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>`;
+    const copiedIconSvg = `<svg viewBox="0 0 24 24" class="action-icon" aria-hidden="true"><path d="m5 12 4.5 4.5L19 7" fill="none" stroke="currentColor" stroke-width="2"/></svg>`;
+    copyBtn.innerHTML = copyIconSvg;
+    copyBtn.setAttribute("aria-label", `复制网址 ${item.title}`);
+    copyBtn.title = "复制网址 (c)";
+    copyBtn.addEventListener("click", async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      try {
+        await navigator.clipboard.writeText(item.url);
+        copyBtn.innerHTML = copiedIconSvg;
+        copyBtn.classList.add("is-copied");
+        toast("网址已复制到剪贴板");
+        setTimeout(() => {
+          if (copyBtn.isConnected) {
+            copyBtn.innerHTML = copyIconSvg;
+            copyBtn.classList.remove("is-copied");
+          }
+        }, 1200);
+      } catch {
+        toast("复制失败", true);
+      }
+    });
+
     const favorite = document.createElement("button");
     favorite.type = "button";
     favorite.className = `mini-button${item.favorite ? " is-favorite" : ""}`;
@@ -2359,7 +2662,7 @@
       showContextMenu(item, box.right, box.bottom, edit);
     });
 
-    actions.append(favorite, edit);
+    actions.append(copyBtn, favorite, edit);
     row.append(selectButton, link, actions);
     return row;
   }
@@ -2577,11 +2880,11 @@
     state.renamingSection = null;
   });
 
-  function openDialog(item = null, initialDestination = "chrome", focusOrigin = document.activeElement) {
+  function openDialog(item = null, initialDestination = "chrome", focusOrigin = document.activeElement, preferredFolderNode = null) {
     rememberDialogFocus(refs.dialog, focusOrigin, item?.id || null);
     state.editingId = item?.id || null;
     editingSnapshot = item ? bookmarkEditSignature(item) : null;
-    const selectedFolderPath = item ? null : selectedNavigationPath();
+    const selectedFolderPath = item ? null : (preferredFolderNode?.path || selectedNavigationPath());
     $("#dialogTitle").textContent = item ? "编辑书签" : "添加书签";
     refs.title.value = item?.title || "";
     refs.url.value = item?.url || "";
@@ -2609,8 +2912,8 @@
         refs.chromeFolderWrap.hidden = false;
         refs.localOrganizeFields.hidden = true;
         const selectedPath = selectedFolderPath;
-        let selectedFolderId = "";
-        if (selectedPath?.length) {
+        let selectedFolderId = preferredFolderNode?.folderId ? String(preferredFolderNode.folderId) : "";
+        if (!selectedFolderId && selectedPath?.length) {
           if (selectedPath.length === 1 && selectedPath[0] === "常用书签") {
             selectedFolderId = [...chromeFolders.values()].find(isChromeBookmarksBarFolder)?.id || "";
           } else {
@@ -3951,7 +4254,10 @@
     const canRename = canRenameChromeFolder(node.folderId)
       || node.items.some((item) => item.source !== "chrome");
     rename.hidden = !canRename;
-    refs.contextMenu.querySelector('[data-menu-kind="folder"].menu-divider').hidden = !canRename;
+    const deleteBtn = refs.contextMenu.querySelector('[data-action="folder-delete"]');
+    const dangerDivider = refs.contextMenu.querySelector('[data-folder-danger-divider]');
+    if (deleteBtn) deleteBtn.hidden = !canRename;
+    if (dangerDivider) dangerDivider.hidden = !canRename;
     const openAll = refs.contextMenu.querySelector('[data-action="folder-open-all"]');
     const openableCount = node.items.filter((item) => safeUrl(item.url)).length;
     const restrictedCount = node.items.length - openableCount;
@@ -3964,10 +4270,69 @@
     }
     refs.contextMenu.hidden = false;
     const menuWidth = refs.contextMenu.offsetWidth || 200;
-    const menuHeight = refs.contextMenu.offsetHeight || 90;
+    const menuHeight = refs.contextMenu.offsetHeight || 180;
     refs.contextMenu.style.left = `${Math.max(8, Math.min(x, innerWidth - menuWidth - 8))}px`;
     refs.contextMenu.style.top = `${Math.max(8, Math.min(y, innerHeight - menuHeight - 8))}px`;
-    refs.contextMenu.querySelector('[data-action="folder-rename"]:not([hidden]), [data-action="folder-open-all"]:not(:disabled)')?.focus();
+    refs.contextMenu.querySelector('[data-menu-kind="folder"][role="menuitem"]:not([hidden]):not(:disabled)')?.focus();
+  }
+
+  function openSubfolderDialog(parentNode, focusOrigin = document.activeElement) {
+    if (!parentNode) return;
+    rememberDialogFocus(refs.renameDialog, focusOrigin);
+    state.renamingSection = {
+      mode: "create-subfolder",
+      parentNode,
+      path: [...parentNode.path],
+      chromeFolderId: parentNode.folderId ? String(parentNode.folderId) : null,
+      restoreFolderFocus: true
+    };
+    const titleEl = $("#renameTitle");
+    if (titleEl) titleEl.textContent = "新建子文件夹";
+    const labelSpan = refs.renameDialog.querySelector(".field span");
+    if (labelSpan) labelSpan.textContent = "子文件夹名称";
+    const submitBtn = refs.renameDialog.querySelector('button[type="submit"]');
+    if (submitBtn) submitBtn.textContent = "创建文件夹";
+    refs.renameInput.value = "";
+    refs.renameInput.placeholder = `在“${parentNode.label}”下新建子文件夹`;
+    refs.renameError.hidden = true;
+    refs.renameError.textContent = "";
+    refs.renameHint.textContent = EXTENSION_MODE
+      ? "将在浏览器书签对应目录下创建子文件夹。"
+      : "创建后将打开书签对话框，将该子文件夹设为默认目录。";
+    refs.renameDialog.showModal();
+    refs.renameInput.focus();
+  }
+
+  async function deleteFolderNode(node, focusOrigin = document.activeElement) {
+    if (!node) return;
+    const count = node.items.length;
+    const confirmMsg = count > 0
+      ? `确定要删除文件夹“${node.label}”及其包含的 ${count} 个书签吗？`
+      : `确定要删除空文件夹“${node.label}”吗？`;
+    if (!confirm(confirmMsg)) {
+      if (focusOrigin?.isConnected) focusOrigin.focus({ preventScroll: true });
+      return;
+    }
+    try {
+      if (EXTENSION_MODE && node.folderId && canRenameChromeFolder(node.folderId)) {
+        await chrome.bookmarks.removeTree(String(node.folderId));
+        await syncChromeBookmarks();
+      }
+      const hasLocal = state.items.some((item) => item.source !== "chrome"
+        && node.path.every((part, idx) => getNavigationPath(item)[idx] === part));
+      if (hasLocal) {
+        state.items = state.items.filter((item) => !(item.source !== "chrome"
+          && node.path.every((part, idx) => getNavigationPath(item)[idx] === part)));
+        persist();
+      }
+      if (state.activeTab === node.id || state.activeTab.startsWith(`node:${JSON.stringify(node.path).slice(0, -1)}`)) {
+        state.activeTab = "all";
+      }
+      render();
+      toast(`已删除文件夹“${node.label}”`);
+    } catch (error) {
+      toast(`删除文件夹失败：${error?.message || "请重试"}`, true);
+    }
   }
 
   function openMoveDialog(item, focusOrigin = document.activeElement) {
@@ -4178,6 +4543,13 @@
       localSnapshot: renameLocalMembersSignature(path),
       snapshot: renameSectionSignature(path, renameChrome ? chromeFolderId : null)
     };
+    const titleEl = $("#renameTitle");
+    if (titleEl) titleEl.textContent = "重命名分组";
+    const labelSpan = refs.renameDialog.querySelector(".field span");
+    if (labelSpan) labelSpan.textContent = "新分组名称";
+    const submitBtn = refs.renameDialog.querySelector('button[type="submit"]');
+    if (submitBtn) submitBtn.textContent = "保存名称";
+    refs.renameInput.placeholder = "输入新的名称";
     refs.renameInput.value = renameChrome
       ? (chromeFolder?.title || path.at(-1))
       : state.renamingSection.path.at(-1);
@@ -4205,6 +4577,31 @@
     refs.renameError.hidden = true;
     const current = state.renamingSection;
     if (!current) return;
+    if (current.mode === "create-subfolder") {
+      try {
+        if (EXTENSION_MODE) {
+          let parentId = current.chromeFolderId;
+          if (!parentId) {
+            parentId = [...chromeFolders.values()].find(isChromeBookmarksBarFolder)?.id || "1";
+          }
+          await chrome.bookmarks.create({ parentId: String(parentId), title: newName });
+          await syncChromeBookmarks();
+          refs.renameDialog.close();
+          state.renamingSection = null;
+          toast(`已创建子文件夹“${newName}”`);
+        } else {
+          const nextPath = [...(current.path || []), newName];
+          refs.renameDialog.close();
+          state.renamingSection = null;
+          openDialog(null, "local", document.activeElement, { path: nextPath, folderId: null });
+          toast(`已为你预填子文件夹“${newName}”，添加书签后生效`);
+        }
+      } catch (error) {
+        refs.renameError.textContent = `创建失败：${error?.message || "请重试"}`;
+        refs.renameError.hidden = false;
+      }
+      return;
+    }
     if (current.snapshot !== renameSectionSignature(current.path, current.chromeFolderId)) {
       refs.renameError.textContent = "此分组已在其他页面中更新。为避免覆盖新结构，请关闭窗口并重新打开分组操作。";
       refs.renameError.hidden = false;
@@ -5349,6 +5746,18 @@
       const folderReturnFocus = contextMenuReturnFocus;
       hideContextMenu();
       if (!node) return;
+      if (action === "folder-add-bookmark") {
+        openDialog(null, "chrome", folderReturnFocus, node);
+        return;
+      }
+      if (action === "folder-new-subfolder") {
+        openSubfolderDialog(node, folderReturnFocus);
+        return;
+      }
+      if (action === "folder-delete") {
+        await deleteFolderNode(node, folderReturnFocus);
+        return;
+      }
       if (action === "folder-rename") {
         const renameChrome = canRenameChromeFolder(node.folderId);
         const renameLocal = node.items.some((entry) => entry.source !== "chrome");
@@ -5391,9 +5800,6 @@
               await chrome.tabs.create({ url, active: false });
               opened++;
             } else {
-              // noopener deliberately makes window.open() return null in many
-              // browsers. A missing WindowProxy cannot distinguish a blocked
-              // popup from a successfully opened, isolated tab.
               window.open(url, "_blank", "noopener,noreferrer");
               requested++;
             }
@@ -5506,12 +5912,32 @@
     });
   });
 
-  // Click outside listener for menus
+  // Click outside listener for menus (including sort & view settings menus)
   document.addEventListener("click", (event) => {
     if (!event.target.closest(".actions-wrap")) closeActionsMenu();
     if (!event.target.closest("#contextMenu") && !event.target.closest(".bookmark-actions")) {
       hideContextMenu();
     }
+    $$(".view-settings-wrap").forEach((wrap) => {
+      if (!wrap.contains(event.target)) {
+        const menu = wrap.querySelector(".view-settings-menu");
+        const btn = wrap.querySelector(".view-settings-button");
+        if (menu && !menu.hidden) {
+          menu.hidden = true;
+          btn?.setAttribute("aria-expanded", "false");
+        }
+      }
+    });
+    $$(".sort-settings-wrap").forEach((wrap) => {
+      if (!wrap.contains(event.target)) {
+        const menu = wrap.querySelector(".sort-settings-menu");
+        const btn = wrap.querySelector(".sort-settings-button");
+        if (menu && !menu.hidden) {
+          menu.hidden = true;
+          btn?.setAttribute("aria-expanded", "false");
+        }
+      }
+    });
   });
 
   window.addEventListener("scroll", () => {
@@ -5536,6 +5962,37 @@
     });
   }
 
+  function findSpatialGridTargetIndex(rows, currentIndex, direction) {
+    if (currentIndex < 0 || currentIndex >= rows.length) {
+      return direction > 0 ? 0 : rows.length - 1;
+    }
+    if (state.viewMode !== "grid") {
+      return Math.max(0, Math.min(rows.length - 1, currentIndex + direction));
+    }
+    const currentRect = rows[currentIndex].getBoundingClientRect();
+    const currentCenterX = (currentRect.left + currentRect.right) / 2;
+    const currentCenterY = (currentRect.top + currentRect.bottom) / 2;
+    const candidates = [];
+    for (let i = 0; i < rows.length; i++) {
+      if (i === currentIndex) continue;
+      const rect = rows[i].getBoundingClientRect();
+      const centerY = (rect.top + rect.bottom) / 2;
+      const dy = centerY - currentCenterY;
+      if (direction > 0 && dy > currentRect.height * 0.45) {
+        candidates.push({ index: i, dy, dx: Math.abs((rect.left + rect.right) / 2 - currentCenterX) });
+      } else if (direction < 0 && dy < -currentRect.height * 0.45) {
+        candidates.push({ index: i, dy: Math.abs(dy), dx: Math.abs((rect.left + rect.right) / 2 - currentCenterX) });
+      }
+    }
+    if (!candidates.length) {
+      return currentIndex;
+    }
+    const minDy = Math.min(...candidates.map((c) => c.dy));
+    const nearestRowCandidates = candidates.filter((c) => Math.abs(c.dy - minDy) <= currentRect.height * 0.6);
+    nearestRowCandidates.sort((a, b) => a.dx - b.dx || a.dy - b.dy);
+    return nearestRowCandidates[0].index;
+  }
+
   // Global Keyboard Shortcuts
   document.addEventListener("keydown", (event) => {
     if (event.isComposing) return;
@@ -5554,7 +6011,12 @@
         closeCommandPalette({ restoreFocus: true });
         return;
       }
-      const hadOpenMenu = !refs.exportMenu.hidden || !refs.actionsMenu.hidden || !refs.contextMenu.hidden;
+      let closedInlineMenu = false;
+      $$(".view-settings-menu:not([hidden]), .sort-settings-menu:not([hidden])").forEach((menu) => {
+        menu.hidden = true;
+        closedInlineMenu = true;
+      });
+      const hadOpenMenu = closedInlineMenu || !refs.exportMenu.hidden || !refs.actionsMenu.hidden || !refs.contextMenu.hidden;
       const dialogOpen = refs.dialog.open || refs.moveDialog.open || refs.renameDialog.open
         || refs.auditDialog.open || refs.shortcutsDialog.open || $("#appearanceDialog").open;
       if (!refs.exportMenu.hidden) {
@@ -5613,35 +6075,50 @@
       return;
     }
 
-    // Keyboard selection navigation
+    // Keyboard selection navigation (4-way spatial grid + j/k linear)
     const activeElement = document.activeElement;
     const focusInsideBookmark = activeElement?.closest?.(".bookmark");
     const focusInsideAnotherControl = !focusInsideBookmark
       && activeElement !== document.body
       && activeElement !== document.documentElement;
     if (focusInsideAnotherControl
-      && ["ArrowDown", "ArrowUp", "j", "k", "J", "K"].includes(event.key)) return;
+      && ["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "j", "k", "J", "K"].includes(event.key)) return;
 
     const rows = [...$$(".bookmark")].filter((row) => row.getClientRects().length > 0);
     if (!rows.length) return;
 
-    if (event.key === "j" || event.key === "ArrowDown" || event.key === "k" || event.key === "ArrowUp") {
+    if (["j", "k", "ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight"].includes(event.key)) {
       event.preventDefault();
-      const step = (event.key === "j" || event.key === "ArrowDown") ? 1 : -1;
       const focusedRow = document.activeElement?.closest?.(".bookmark");
       const focusedIndex = rows.indexOf(focusedRow);
       const currentIndex = focusedIndex >= 0 ? focusedIndex : state.keyboardIndex;
-      if (step > 0 && currentIndex === rows.length - 1 && refs.content.querySelector(".load-more")) {
-        const nextIndex = rows.length;
-        state.limit += PAGE_SIZE;
-        render({ refreshNavigation: false });
-        const expandedRows = [...$$(".bookmark")].filter((row) => row.getClientRects().length > 0);
-        focusBookmarkRow(nextIndex, expandedRows);
-        return;
+      let nextIndex;
+
+      if (event.key === "j" || event.key === "ArrowRight") {
+        if (currentIndex === rows.length - 1 && refs.content.querySelector(".load-more")) {
+          const targetIdx = rows.length;
+          state.limit += PAGE_SIZE;
+          render({ refreshNavigation: false });
+          const expandedRows = [...$$(".bookmark")].filter((row) => row.getClientRects().length > 0);
+          focusBookmarkRow(targetIdx, expandedRows);
+          return;
+        }
+        nextIndex = currentIndex < 0 ? 0 : Math.max(0, Math.min(rows.length - 1, currentIndex + 1));
+      } else if (event.key === "k" || event.key === "ArrowLeft") {
+        nextIndex = currentIndex < 0 ? rows.length - 1 : Math.max(0, Math.min(rows.length - 1, currentIndex - 1));
+      } else {
+        const dir = event.key === "ArrowDown" ? 1 : -1;
+        nextIndex = findSpatialGridTargetIndex(rows, currentIndex, dir);
+        if (dir > 0 && nextIndex === currentIndex && refs.content.querySelector(".load-more")) {
+          const targetIdx = rows.length;
+          state.limit += PAGE_SIZE;
+          render({ refreshNavigation: false });
+          const expandedRows = [...$$(".bookmark")].filter((row) => row.getClientRects().length > 0);
+          focusBookmarkRow(targetIdx, expandedRows);
+          return;
+        }
       }
-      state.keyboardIndex = currentIndex < 0
-        ? (step > 0 ? 0 : rows.length - 1)
-        : Math.max(0, Math.min(rows.length - 1, currentIndex + step));
+      state.keyboardIndex = nextIndex;
       focusBookmarkRow(state.keyboardIndex, rows);
       return;
     }
@@ -5658,6 +6135,12 @@
         if (document.activeElement.closest("button, a")) return;
         event.preventDefault();
         currentRow.querySelector(".bookmark-link")?.click();
+      } else if (event.key.toLocaleLowerCase() === "c") {
+        event.preventDefault();
+        navigator.clipboard?.writeText(item.url).then(
+          () => toast("网址已复制到剪贴板"),
+          () => toast("复制失败", true)
+        );
       } else if (event.key === "e") {
         event.preventDefault();
         openDialog(item);
@@ -5755,5 +6238,6 @@
   // Initialization
   syncThemeButton();
   render();
+  void hydrateIconsFromIdb();
   if (EXTENSION_MODE) startChromeSync();
 })();

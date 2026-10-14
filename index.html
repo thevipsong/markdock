@@ -45,7 +45,7 @@
         <div class="titlebar-left">
           <h1 class="brand" aria-label="MarkDock 书签坞">
             <span class="brand-mark">
-              <img src="./extension-icon-48.png" alt="" aria-hidden="true" />
+              <img src="./favicon.svg" alt="" aria-hidden="true" />
             </span>
             <span class="brand-name">MarkDock</span>
           </h1>
@@ -310,11 +310,12 @@
         <div class="shortcut-row"><kbd>/</kbd><span>聚焦搜索框</span></div>
         <div class="shortcut-row"><kbd>⌘ K</kbd> / <kbd>Ctrl K</kbd><span>打开快速操作面板</span></div>
         <div class="shortcut-row"><kbd>s</kbd><span>切换书签选择模式</span></div>
-        <div class="shortcut-row"><kbd>j</kbd> / <kbd>k</kbd> 或 <kbd>↓</kbd> / <kbd>↑</kbd><span>在可见书签中上下移动；搜索后按 ↓ 进入结果</span></div>
+        <div class="shortcut-row"><kbd>↑</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>→</kbd> 或 <kbd>j</kbd> / <kbd>k</kbd><span>网格四向移动或上下遍历；搜索后按 ↓ 进入结果</span></div>
         <div class="shortcut-row"><kbd>Enter</kbd><span>在新标签页打开当前选中的书签</span></div>
+        <div class="shortcut-row"><kbd>c</kbd><span>复制当前选中书签的网址</span></div>
         <div class="shortcut-row"><kbd>e</kbd><span>编辑当前选中的书签</span></div>
         <div class="shortcut-row"><kbd>f</kbd><span>收藏 / 取消收藏当前书签</span></div>
-        <div class="shortcut-row"><kbd>m</kbd><span>移动当前书签到其他分组</span></div>
+        <div class="shortcut-row"><kbd>m</kbd><span>移动当前书签到其他分组（或直接拖拽卡片）</span></div>
         <div class="shortcut-row"><kbd>Delete</kbd> 或 <kbd>Backspace</kbd><span>删除当前选中的书签</span></div>
         <div class="shortcut-row"><kbd>Esc</kbd><span>关闭当前菜单或对话框；无浮层时清空搜索并返回搜索框</span></div>
         <div class="shortcut-row"><kbd>?</kbd><span>随时呼出此快捷键帮助</span></div>
@@ -504,11 +505,21 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> 删除书签
       </button>
       <div class="menu-divider" data-menu-kind="folder" hidden></div>
+      <button type="button" data-menu-kind="folder" data-action="folder-add-bookmark" role="menuitem" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg> 在此新建书签
+      </button>
+      <button type="button" data-menu-kind="folder" data-action="folder-new-subfolder" role="menuitem" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-6.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 4H5a2 2 0 0 0-2 2v1z"/><path d="M12 10v6M9 13h6"/></svg> 新建子文件夹
+      </button>
       <button type="button" data-menu-kind="folder" data-action="folder-rename" role="menuitem" hidden>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg> 重命名文件夹
       </button>
       <button type="button" data-menu-kind="folder" data-action="folder-open-all" role="menuitem" hidden>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3"/></svg> <span id="folderOpenAllLabel">打开文件夹内书签</span>
+      </button>
+      <div class="menu-divider" data-menu-kind="folder" data-folder-danger-divider hidden></div>
+      <button type="button" data-menu-kind="folder" data-action="folder-delete" role="menuitem" class="danger-action" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> 删除文件夹
       </button>
     </div>
 

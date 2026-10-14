@@ -275,15 +275,16 @@ def main() -> None:
     except OSError as error:
         try:
             with urlopen(url, timeout=2) as response:
-                if "拾页" in response.read(4096).decode("utf-8", errors="ignore"):
-                    print(f"拾页已经在运行：{url}")
+                body = response.read(4096).decode("utf-8", errors="ignore")
+                if any(brand in body for brand in ("MarkDock", "书签坞", "栖屿", "拾页")):
+                    print(f"MarkDock 书签坞已经在运行：{url}")
                     webbrowser.open(url)
                     return
         except OSError:
             pass
         raise SystemExit(f"无法启动：端口 8765 已被其他程序占用。{error}") from error
     with server:
-        print(f"拾页已启动：{url}")
+        print(f"MarkDock 书签坞已启动：{url}")
         print("保持此窗口打开；按 Ctrl+C 结束。")
         webbrowser.open(url)
         try:
