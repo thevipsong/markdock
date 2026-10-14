@@ -65,16 +65,19 @@
 /* 旧版皮肤偏好会先归一到暗黑或白色主题，再应用这些样式。 */
 
 * { box-sizing: border-box; }
-html { min-height: 100%; }
+html {
+  min-height: 100%;
+  background-color: var(--bg-canvas);
+}
 
 body {
   min-height: 100vh;
   margin: 0;
   padding: 0;
-  background: var(--bg-canvas);
+  background: transparent !important;
   color: var(--text);
   overflow-x: hidden;
-  transition: background-color 0.3s ease, color 0.3s ease;
+  transition: color 0.3s ease;
 }
 
 button, input, select, textarea { font: inherit; color: inherit; }
@@ -117,10 +120,10 @@ input:focus-visible, select:focus-visible {
 .backdrop {
   position: fixed;
   inset: 0;
-  z-index: -1;
+  z-index: 0;
   overflow: hidden;
   pointer-events: none;
-  background: var(--skin-diffuse);
+  background: var(--wallpaper-gradient, var(--skin-diffuse));
   background-color: var(--bg-canvas);
   transition: background 0.4s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.4s ease;
 }
@@ -136,10 +139,11 @@ input:focus-visible, select:focus-visible {
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.4s ease, filter 0.2s ease;
+  z-index: 1;
 }
 
 :root[data-wallpaper-mode="custom"] .backdrop-image {
-  opacity: 1;
+  opacity: 1 !important;
 }
 
 .backdrop-overlay {
@@ -149,6 +153,7 @@ input:focus-visible, select:focus-visible {
   opacity: var(--wallpaper-overlay, 0);
   pointer-events: none;
   transition: opacity 0.2s ease;
+  z-index: 2;
 }
 
 /* ==========================================================================
@@ -165,6 +170,7 @@ input:focus-visible, select:focus-visible {
   background: transparent;
   position: relative;
   isolation: isolate;
+  z-index: 1;
 }
 
 /* Unified Floating Titlebar */
@@ -1818,6 +1824,8 @@ html, body {
   max-width: 1480px;
   min-height: 100svh;
   padding: 0 clamp(18px, 4vw, 56px) 32px;
+  position: relative;
+  z-index: 1;
 }
 
 .titlebar,
@@ -3154,12 +3162,32 @@ button:disabled,
   background-color: var(--bg-canvas);
   position: fixed;
   inset: 0;
-  z-index: -1;
+  z-index: 0;
   overflow: hidden;
   pointer-events: none;
   transition: background 0.4s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.4s ease;
 }
-:root[data-wallpaper-mode="solid"] .backdrop { background: var(--wallpaper-solid, var(--bg-canvas)); }
+
+:root[data-wallpaper-mode="diffuse"] .backdrop {
+  background: var(--skin-diffuse) !important;
+}
+
+:root[data-wallpaper-mode="gradient"] .backdrop {
+  background: var(--wallpaper-gradient, var(--skin-diffuse)) !important;
+}
+
+:root[data-wallpaper-mode="solid"] .backdrop {
+  background: var(--wallpaper-solid, var(--bg-canvas)) !important;
+}
+
+:root[data-wallpaper-mode="custom"] .backdrop {
+  background: var(--bg-canvas) !important;
+}
+
+:root[data-wallpaper-mode="solid"] .backdrop::before,
+:root[data-wallpaper-mode="custom"] .backdrop::before {
+  display: none !important;
+}
 
 .backdrop-image {
   position: absolute;
@@ -3172,9 +3200,10 @@ button:disabled,
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.4s ease, filter 0.2s ease;
+  z-index: 1;
 }
 :root[data-wallpaper-mode="custom"] .backdrop-image {
-  opacity: 1;
+  opacity: 1 !important;
 }
 
 .backdrop-overlay {
@@ -3184,6 +3213,11 @@ button:disabled,
   opacity: var(--wallpaper-overlay, 0);
   pointer-events: none;
   transition: opacity 0.2s ease;
+  z-index: 2;
+}
+
+:root[data-theme="light"] .backdrop-overlay {
+  background: #ffffff;
 }
 
 /* 微质感科技点阵网格 */
@@ -3193,10 +3227,10 @@ button:disabled,
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.35s ease;
-  z-index: 1;
+  z-index: 3;
 }
 :root[data-texture-mode="dots"] .backdrop-texture {
-  opacity: 1;
+  opacity: 1 !important;
   background-image: radial-gradient(rgba(255, 255, 255, 0.16) 1.2px, transparent 1.2px);
   background-size: 24px 24px;
 }
@@ -3756,11 +3790,15 @@ textarea,
   --skin-diffuse: linear-gradient(160deg, #faf9fc 0%, #f4f3f7 64%, #efedf3 100%);
 }
 
-html, body {
+html {
+  background-color: var(--bg-canvas);
+}
+
+body {
   font-family: var(--font-ui);
   font-weight: 550;
   letter-spacing: 0;
-  background-color: var(--bg-canvas);
+  background: transparent !important;
   color: var(--text);
 }
 
