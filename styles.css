@@ -592,9 +592,9 @@ input:focus-visible, select:focus-visible {
 .tab[aria-current="page"] {
   color: var(--accent);
   background: var(--accent-soft);
-  border-color: var(--accent-border);
+  border-color: transparent;
   font-weight: 600;
-  box-shadow: none;
+  box-shadow: inset 3px 0 0 var(--accent);
 }
 .tab-icon {
   width: 13px;
@@ -605,18 +605,27 @@ input:focus-visible, select:focus-visible {
   flex-shrink: 0;
 }
 .tab-count {
-  font-size: 11px;
-  font-weight: 550;
-  padding: 1px 7px;
+  margin-left: auto;
+  font-size: 11.5px;
+  font-weight: 500;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  padding: 0 4px;
   border-radius: 999px;
-  background: var(--surface-soft);
+  background: transparent;
   color: var(--text-muted);
   line-height: 1.3;
+  opacity: 0.65;
+  transition: opacity 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+}
+.tab:hover .tab-count {
+  opacity: 0.9;
 }
 .tab[aria-current="page"] .tab-count {
   background: var(--accent-soft);
   color: var(--accent);
   font-weight: 600;
+  padding: 1px 7px;
+  opacity: 1;
 }
 
 /* Sub-folder Navigation Pills */
@@ -1811,17 +1820,18 @@ html, body {
   padding: 0 clamp(18px, 4vw, 56px) 32px;
 }
 
-.titlebar {
+.titlebar,
+.workspace-column .titlebar {
   grid-template-columns: minmax(220px, 1fr) minmax(360px, 1.45fr) minmax(220px, 1fr);
   gap: 22px;
-  margin-top: 18px;
-  padding: 12px 14px;
-  border: 1px solid var(--nav-border);
-  border-radius: 20px;
-  background: var(--nav-bg);
-  box-shadow: var(--nav-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  backdrop-filter: var(--glass-filter, blur(24px));
-  -webkit-backdrop-filter: var(--glass-filter, blur(24px));
+  margin-top: 0 !important;
+  padding: 14px 0 10px !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
 .titlebar-left { gap: 12px; }
@@ -2422,16 +2432,18 @@ html, body { font-family: var(--font-ui); }
 
 .sidebar .tab[aria-current="page"],
 .tab[aria-current="page"] {
-  color: var(--text);
-  background: var(--surface-soft);
-  border: 1px solid var(--line-strong);
-  box-shadow: inset 2px 0 var(--accent);
-  font-weight: 650;
+  color: var(--accent);
+  background: var(--tab-active-bg, var(--accent-soft));
+  border: 1px solid transparent;
+  box-shadow: inset 3px 0 0 var(--accent);
+  font-weight: 600;
 }
 .sidebar .tab[aria-current="page"] .tab-count,
 .tab[aria-current="page"] .tab-count {
-  color: var(--text-secondary);
-  background: var(--surface-hover);
+  color: var(--accent);
+  background: var(--accent-soft);
+  opacity: 1;
+  padding: 1px 7px;
 }
 .sub-tab[aria-current="page"] {
   color: var(--text);
@@ -2542,14 +2554,14 @@ button:disabled,
   gap: 2px;
 }
 .sidebar .tab[aria-current="page"] {
-  color: var(--text);
-  background: var(--surface-hover);
-  border-color: var(--line-strong);
-  box-shadow: inset 2px 0 var(--text-secondary);
+  color: var(--accent);
+  background: var(--tab-active-bg, var(--accent-soft));
+  border-color: transparent;
+  box-shadow: inset 3px 0 0 var(--accent);
 }
 .sidebar .tab[aria-current="page"] .tab-count {
-  color: var(--text);
-  background: var(--surface-soft);
+  color: var(--accent);
+  background: var(--accent-soft);
 }
 .nav-section-label {
   padding: 19px 12px 7px;
@@ -2851,32 +2863,35 @@ button:disabled,
 .bookmark-favicon-wrap.is-loading .bookmark-favicon-fallback { display: block; }
 .bookmark-favicon-wrap.is-loading .bookmark-favicon { opacity: 0; }
 :root[data-theme="light"] .bookmark-favicon-wrap {
-  /* A quiet near-white well lets dark marks read naturally on white cards. */
-  background: #f0f2f4;
-  border-color: rgba(24, 27, 31, 0.14);
+  /* Clean pure white tile with subtle edge matches light card naturally. */
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.06);
   color: var(--text-secondary);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.94), 0 1px 2px rgba(24, 27, 31, 0.06);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+:root[data-theme="dark"] .bookmark-favicon-wrap {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
+  box-shadow: none;
 }
 :root[data-theme="dark"] .bookmark-favicon-wrap[data-icon-contrast="unknown"] {
-  background: #f0f1f2;
-  border-color: rgba(24, 27, 31, 0.16);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: none;
 }
 :root[data-theme="dark"] .bookmark-favicon-wrap[data-icon-surface="light"],
 :root[data-theme="dark"] .bookmark-favicon-wrap[data-icon-surface="dark"] {
-  /* Opaque monochrome canvases need a clear edge against the dark card. */
-  background: #f0f1f2;
-  border-color: rgba(24, 27, 31, 0.15);
-  color: #1b1c1e;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.24);
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.10);
+  color: #f1f2f3;
+  box-shadow: none;
 }
 :root[data-theme="light"] .bookmark-favicon-wrap[data-icon-surface="dark"] {
-  /* Keep one calm, light icon well across the grid; let the logo retain its
-     own dark brand canvas when it has one instead of adding a second dark tile. */
-  background: #f0f2f4;
-  border-color: rgba(24, 27, 31, 0.14);
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.06);
   color: var(--text-secondary);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.94), 0 1px 2px rgba(24, 27, 31, 0.06);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
 }
 :root[data-theme="light"] .bookmark-favicon-wrap[data-icon-surface="dark"] .bookmark-favicon {
   /* Keep dark-canvas brand artwork intact, but give it a quieter footprint. */
@@ -2917,65 +2932,76 @@ button:disabled,
   filter: brightness(0) invert(1) drop-shadow(0 0 0.45px rgba(18, 20, 24, 0.72));
 }
 .bookmark-card .bookmark-main {
-  grid-column: 2;
-  grid-row: 1;
   min-width: 0;
+  width: 100%;
+}
+.bookmark-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+  width: 100%;
 }
 .bookmark-card .bookmark-title {
+  flex: 1;
+  min-width: 0;
   display: block;
   overflow: hidden;
   color: var(--text);
-  font-size: 14px;
-  font-weight: 650;
+  font-size: 13.5px;
+  font-weight: 600;
   line-height: 1.4;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .bookmark-card .bookmark-domain-line {
-  grid-column: 2;
-  grid-row: 2;
   min-width: 0;
+  width: 100%;
   display: flex;
   align-items: center;
-  gap: 7px;
 }
 .bookmark-card .bookmark-domain {
   min-width: 0;
-  flex: 1;
-  overflow: hidden;
+  width: 100%;
   max-width: 100%;
+  overflow: hidden;
   margin: 0;
   color: var(--text-secondary);
   font-family: var(--font-ui);
   font-size: 11.5px;
   letter-spacing: 0;
-  opacity: 1;
+  opacity: 0.72;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-.bookmark-source-tag {
-  flex: none;
-  padding: 1px 5px;
-  border: 1px solid var(--line-strong);
-  border-radius: 999px;
-  background: var(--surface-soft);
-  color: var(--text-muted);
-  font-size: 9px;
-  font-weight: 650;
-  line-height: 1.35;
 }
 .bookmark-context {
-  grid-column: 2;
-  grid-row: 3;
-  overflow: hidden;
+  margin-left: auto;
+  flex-shrink: 0;
+  max-width: 96px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  line-height: 1.35;
   color: var(--text-muted);
-  font-size: 11px;
-  line-height: 1.4;
-  opacity: 1;
-  text-overflow: ellipsis;
+  background: var(--surface-soft, rgba(0, 0, 0, 0.04));
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: opacity 0.15s ease;
 }
-.workspace-column .content[data-scope="folder"] .bookmark-context { display: none; }
+:root[data-theme="dark"] .bookmark-context {
+  background: rgba(255, 255, 255, 0.08);
+  color: #9da0a8;
+}
+.bookmark-card:hover .bookmark-context,
+.bookmark-card:focus-within .bookmark-context {
+  opacity: 0;
+  pointer-events: none;
+}
+.bookmark-card:has(.bookmark-actions.favorite-always) .bookmark-context {
+  margin-right: 22px;
+}
 .bookmark-card .bookmark-actions {
   position: absolute;
   top: 8px;
@@ -3800,16 +3826,27 @@ button, .button, .tab, .bookmark-title { font-weight: 620; }
 .sidebar-collapse-button svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.7; }
 .sidebar-collapse-button svg.is-collapsed { transform: rotate(180deg); }
 .sidebar .tabs { padding-top: 9px; }
-.sidebar .tab { border-radius: 7px; }
 .sidebar .tab[aria-current="page"] {
-  color: var(--text);
-  background: var(--tab-active-bg);
-  border-color: var(--tab-active-border);
-  box-shadow: inset 2px 0 var(--accent);
+  color: var(--accent);
+  background: var(--tab-active-bg, var(--accent-soft));
+  border-color: transparent;
+  box-shadow: inset 3px 0 0 var(--accent);
+  font-weight: 600;
 }
 .sidebar .tab[aria-current="page"] .tab-count { color: var(--accent); background: var(--accent-soft); }
-.nav-folder-tab[aria-current="page"] { color: var(--text); }
+.nav-folder-tab[aria-current="page"] { color: var(--accent); }
 .nav-folder-tab[aria-current="page"] .nav-folder-icon { color: var(--accent); }
+.nav-folder-emoji {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  line-height: 1;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  margin-right: 2px;
+}
 .nav-node-children { border-left-color: var(--line-strong); }
 
 .content-heading {
@@ -4145,37 +4182,41 @@ button, .button, .tab, .bookmark-title { font-weight: 620; }
 .bookmark-card .bookmark-domain-line {
   display: flex;
   align-items: center;
-  gap: 6px;
   min-width: 0;
-  overflow: hidden;
+  width: 100%;
 }
 .bookmark-card .bookmark-domain {
-  font-size: 11px;
+  font-size: 11.5px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   color: var(--text-muted);
-  flex: 0 1 auto;
+  flex: 1;
+  width: 100%;
+  max-width: 100%;
   min-width: 0;
+  opacity: 0.72;
 }
 
 /* --------------------------------------------------------------------------
-   Logo / Favicon 容器标准化（统一 36x36px 浅灰圆角容器）
+   Logo / Favicon 容器标准化（统一 36x36px 精致圆角容器，消除双层边框）
    -------------------------------------------------------------------------- */
 .bookmark-favicon-wrap {
   width: 36px;
   height: 36px;
   border-radius: 9px;
-  background: #f1f3f5;
-  border: 1px solid rgba(0, 0, 0, 0.04);
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
   display: grid;
   place-items: center;
   overflow: hidden;
   flex-shrink: 0;
 }
 :root[data-theme="dark"] .bookmark-favicon-wrap {
-  background: #24252b;
-  border-color: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: none;
 }
 .bookmark-favicon {
   width: 20px;
@@ -4192,22 +4233,23 @@ button, .button, .tab, .bookmark-title { font-weight: 620; }
    二级路径微型浅色胶囊标签（Pill Tag）
    -------------------------------------------------------------------------- */
 .bookmark-context {
-  font-size: 10.5px;
+  font-size: 10px;
   color: var(--text-muted);
   display: inline-flex;
   align-items: center;
-  max-width: 130px;
+  max-width: 96px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   background: var(--surface-soft, rgba(0, 0, 0, 0.04));
   padding: 1px 6px;
   border-radius: 4px;
-  line-height: 1.3;
+  line-height: 1.35;
   flex-shrink: 0;
+  transition: opacity 0.15s ease;
 }
 :root[data-theme="dark"] .bookmark-context {
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.08);
   color: #9da0a8;
 }
 
@@ -4702,11 +4744,4 @@ button, .button, .tab, .bookmark-title { font-weight: 620; }
   min-width: 156px;
 }
 
-:root[data-theme="dark"] .bookmark-favicon-wrap[data-icon-surface="light"] {
-  background: rgba(242, 243, 245, 0.9) !important;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16), 0 2px 6px rgba(0, 0, 0, 0.28) !important;
-}
-:root[data-theme="dark"] .bookmark-favicon-wrap[data-icon-surface="light"] .bookmark-favicon {
-  filter: brightness(0.95) contrast(1.02);
-}
 

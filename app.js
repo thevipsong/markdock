@@ -97,7 +97,7 @@
     importButton: $("#importButton"), demoImportButton: $("#demoImportButton"),
     exportButton: $("#exportButton"), exportMenu: $("#exportMenu"),
     duplicateButton: $("#duplicateButton"), deadLinkButton: $("#deadLinkButton"),
-    shortcutsButton: $("#shortcutsButton"), shortcutsDialog: $("#shortcutsDialog"), footerShortcutsLink: $("#footerShortcutsLink"),
+    shortcutsButton: $("#shortcutsButton"), shortcutsMenuItem: $("#shortcutsMenuItem"), shortcutsDialog: $("#shortcutsDialog"), footerShortcutsLink: $("#footerShortcutsLink"),
     themeToggle: $("#themeToggle"), appearanceMenuItem: $("#appearanceMenuItem"),
     sidebarStorageStatus: $("#sidebarStorageStatus"),
     syncBadge: $("#syncBadge"), syncBadgeText: $("#syncBadgeText"), toast: $("#toast"),
@@ -726,6 +726,62 @@
     return new Promise((resolve) => {
       queuedHighResolutionLookups.push({ isNeeded, resolve });
     });
+  }
+
+  const KNOWN_BRANDS = new Map([
+    ["twitter", "Twitter"],
+    ["x", "X"],
+    ["github", "GitHub"],
+    ["gitlab", "GitLab"],
+    ["youtube", "YouTube"],
+    ["bilibili", "Bilibili"],
+    ["zhihu", "知乎"],
+    ["v2ex", "V2EX"],
+    ["chatgpt", "ChatGPT"],
+    ["openai", "OpenAI"],
+    ["claude", "Claude"],
+    ["gemini", "Gemini"],
+    ["deepseek", "DeepSeek"],
+    ["jellyfin", "Jellyfin"],
+    ["plex", "Plex"],
+    ["emby", "Emby"],
+    ["nas", "NAS"],
+    ["notion", "Notion"],
+    ["figma", "Figma"],
+    ["google", "Google"],
+    ["gmail", "Gmail"],
+    ["stackoverflow", "Stack Overflow"],
+  ]);
+
+  function formatBookmarkTitle(rawTitle) {
+    if (!rawTitle || typeof rawTitle !== "string") return "";
+    const trimmed = rawTitle.trim();
+    if (!trimmed) return "";
+    const lower = trimmed.toLowerCase();
+    if (KNOWN_BRANDS.has(lower)) {
+      return KNOWN_BRANDS.get(lower);
+    }
+    for (const [k, v] of KNOWN_BRANDS.entries()) {
+      if (lower.startsWith(k + " ") || lower.startsWith(k + " -") || lower.startsWith(k + "：") || lower.startsWith(k + ":")) {
+        return v + trimmed.slice(k.length);
+      }
+    }
+    if (/^[a-z]/.test(trimmed)) {
+      return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+    }
+    return trimmed;
+  }
+
+  function extractLeadingEmoji(text) {
+    if (!text || typeof text !== "string") return { emoji: "", label: "" };
+    const match = text.match(/^(\p{Extended_Pictographic}(?:\uFE0F|\u200d\p{Extended_Pictographic})*)\s*/u);
+    if (match) {
+      return {
+        emoji: match[1],
+        label: text.slice(match[0].length).trim() || text,
+      };
+    }
+    return { emoji: "", label: text };
   }
 
   function urlPathPreview(rawUrl, queryTokens) {
@@ -1419,6 +1475,7 @@
     const badge = document.createElement("span");
     badge.className = "tab-count";
     badge.textContent = String(count);
+    if (count === 0) badge.hidden = true;
     button.append(name, badge);
     button.addEventListener("click", () => selectNavigationTab(id));
     return button;
@@ -1505,24 +1562,34 @@
       select.dataset.navigationId = node.id;
       if (state.activeTab === node.id) select.setAttribute("aria-current", "page");
       select.title = node.path.join(" › ");
-      select.setAttribute("aria-label", `${node.path.join("，")}，${node.count} 个书签`);
-      const folderIcon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-      folderIcon.setAttribute("class", "tab-icon nav-folder-icon");
-      folderIcon.setAttribute("viewBox", "0 0 24 24");
-      folderIcon.setAttribute("fill", "none");
-      folderIcon.setAttribute("stroke", "currentColor");
-      folderIcon.setAttribute("stroke-width", "1.6");
-      folderIcon.setAttribute("stroke-linecap", "round");
-      folderIcon.setAttribute("stroke-linejoin", "round");
-      folderIcon.setAttribute("aria-hidden", "true");
-      folderIcon.innerHTML = `<path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-6.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 4H5a2 2 0 0 0-2 2v1z"/>`;
+      const { emoji, label: cleanLabel } = extractLeadingEmoji(node.label);
+      let tabIconElement;
+      if (emoji) {
+        tabIconElement = document.createElement("span");
+        tabIconElement.className = "tab-icon nav-folder-emoji";
+        tabIconElement.textContent = emoji;
+        tabIconElement.setAttribute("aria-hidden", "true");
+      } else {
+        const folderIcon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        folderIcon.setAttribute("class", "tab-icon nav-folder-icon");
+        folderIcon.setAttribute("viewBox", "0 0 24 24");
+        folderIcon.setAttribute("fill", "none");
+        folderIcon.setAttribute("stroke", "currentColor");
+        folderIcon.setAttribute("stroke-width", "1.6");
+        folderIcon.setAttribute("stroke-linecap", "round");
+        folderIcon.setAttribute("stroke-linejoin", "round");
+        folderIcon.setAttribute("aria-hidden", "true");
+        folderIcon.innerHTML = `<path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-6.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 4H5a2 2 0 0 0-2 2v1z"/>`;
+        tabIconElement = folderIcon;
+      }
       const name = document.createElement("span");
       name.className = "tab-label";
-      name.textContent = node.label;
+      name.textContent = emoji ? (cleanLabel || node.label) : node.label;
       const badge = document.createElement("span");
       badge.className = "tab-count";
       badge.textContent = String(node.count);
-      select.append(folderIcon, name, badge);
+      if (node.count === 0) badge.hidden = true;
+      select.append(tabIconElement, name, badge);
       select.addEventListener("click", () => selectNavigationTab(node.id, node));
 
       const more = document.createElement("button");
@@ -2140,16 +2207,16 @@
     return toolbar;
   }
 
-  function createBookmarkGrid(items, queryTokens) {
+  function createBookmarkGrid(items, queryTokens, groupPath = null) {
     const grid = document.createElement("div");
     grid.className = "bookmark-grid";
-    for (const item of items) grid.append(buildBookmark(item, queryTokens));
+    for (const item of items) grid.append(buildBookmark(item, queryTokens, groupPath));
     return grid;
   }
 
   function renderBookmarkResults(filtered, visible, queryTokens) {
     // Preserve a deliberate global order when the user has selected a sort.
-    if (state.sortMode !== "default") return createBookmarkGrid(visible, queryTokens);
+    if (state.sortMode !== "default") return createBookmarkGrid(visible, queryTokens, selectedPath);
 
     const selectedPath = state.query.trim() ? null : selectedNavigationPath();
     const groupingDepth = selectedPath?.length ? selectedPath.length + 1 : 1;
@@ -2174,7 +2241,7 @@
     const onlyGroup = groups.size === 1 ? groups.values().next().value : null;
     if (selectedPath && onlyGroup
       && JSON.stringify(onlyGroup.path) === JSON.stringify(selectedPath)) {
-      return createBookmarkGrid(onlyGroup.visibleItems, queryTokens);
+      return createBookmarkGrid(onlyGroup.visibleItems, queryTokens, onlyGroup.path);
     }
 
     const result = document.createDocumentFragment();
@@ -2198,7 +2265,7 @@
       count.setAttribute("aria-label", `${group.totalCount} 个书签`);
       heading.append(label, count);
       setupFolderDropTarget(heading, group.path, navigationNodeAtPath(group.path)?.folderId || null);
-      section.append(heading, createBookmarkGrid(group.visibleItems, queryTokens));
+      section.append(heading, createBookmarkGrid(group.visibleItems, queryTokens, group.path));
       result.append(section);
     }
     return result;
@@ -2257,17 +2324,23 @@
           : state.chromeSyncStatus === "importing"
             ? "正在导入"
             : "正在同步");
-      refs.count.textContent = state.chromeSyncStatus === "error"
-        ? "● 同步异常"
-        : state.chromeSyncStatus === "importing"
-          ? `● 正在同步${BOOKMARK_TERM}`
-          : "● 实时同步已就绪";
+      if (refs.count) {
+        refs.count.textContent = state.chromeSyncStatus === "error"
+          ? "● 同步异常"
+          : state.chromeSyncStatus === "importing"
+            ? `● 正在同步${BOOKMARK_TERM}`
+            : "● 实时同步已就绪";
+      }
     } else {
-      refs.count.textContent = state.mode === "demo"
-        ? "● 示例演示就绪"
-        : "● 本地数据已就绪";
+      if (refs.count) {
+        refs.count.textContent = state.mode === "demo"
+          ? "● 示例演示就绪"
+          : "● 本地数据已就绪";
+      }
     }
-    refs.footerCount.textContent = `共 ${state.items.length} 个书签`;
+    if (refs.footerCount) {
+      refs.footerCount.textContent = `共 ${state.items.length} 个书签`;
+    }
 
     if (refs.syncNowButton) refs.syncNowButton.hidden = !EXTENSION_MODE;
 
@@ -2350,12 +2423,13 @@
     renderTabs();
   }
 
-  function buildBookmark(item, queryTokens = []) {
+  function buildBookmark(item, queryTokens = [], groupPath = null) {
     const row = document.createElement("div");
     const isSelected = state.selectedBookmarkIds.has(item.id);
     row.className = `bookmark bookmark-card${isSelected ? " is-selected" : ""}`;
     row.dataset.bookmarkId = item.id;
     row.draggable = true;
+    const formattedTitle = formatBookmarkTitle(item.title);
     row.addEventListener("contextmenu", (event) => {
       event.preventDefault();
       showContextMenu(item, event.clientX, event.clientY, link);
@@ -2369,7 +2443,7 @@
       row.classList.add("is-dragging");
       if (event.dataTransfer) {
         event.dataTransfer.effectAllowed = "move";
-        try { event.dataTransfer.setData("text/plain", item.title || item.url); } catch { /* ignore */ }
+        try { event.dataTransfer.setData("text/plain", formattedTitle || item.url); } catch { /* ignore */ }
       }
     });
     row.addEventListener("dragend", () => {
@@ -2412,7 +2486,7 @@
     selectButton.type = "button";
     selectButton.className = "bookmark-select-toggle";
     selectButton.setAttribute("aria-pressed", String(isSelected));
-    selectButton.setAttribute("aria-label", `${isSelected ? "取消选择" : "选择"} ${item.title}`);
+    selectButton.setAttribute("aria-label", `${isSelected ? "取消选择" : "选择"} ${formattedTitle}`);
     selectButton.title = isSelected ? "取消选择" : "选择书签";
     selectButton.innerHTML = `<svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4.5 10.2 3.5 3.4 7.5-7.4"/></svg>`;
     selectButton.addEventListener("click", (event) => {
@@ -2449,15 +2523,12 @@
         if (event.key === "Enter") explainBlockedOpen(event);
       });
     }
-    link.setAttribute("aria-label", `${item.title}，${item.url}${openableUrl ? "" : "，MarkDock 不会直接打开此网址"}`);
+    link.setAttribute("aria-label", `${formattedTitle}，${item.url}${openableUrl ? "" : "，MarkDock 不会直接打开此网址"}`);
 
     link.addEventListener("mouseenter", (e) => showBookmarkTooltip(item, link, e.clientX, e.clientY));
     link.addEventListener("mouseleave", scheduleHideBookmarkTooltip);
     link.addEventListener("focus", () => showBookmarkTooltip(item, link));
     link.addEventListener("blur", hideBookmarkTooltip);
-
-    const main = document.createElement("span");
-    main.className = "bookmark-main";
 
     const faviconWrap = document.createElement("span");
     faviconWrap.className = "bookmark-favicon-wrap";
@@ -2573,12 +2644,51 @@
     faviconWrap.append(favicon, initials);
 
     const textWrap = document.createElement("span");
-    textWrap.className = "bookmark-text";
+    textWrap.className = "bookmark-text bookmark-main";
+
+    const titleRow = document.createElement("span");
+    titleRow.className = "bookmark-title-row";
 
     const title = document.createElement("span");
     title.className = "bookmark-title";
-    title.innerHTML = highlightMatch(item.title, queryTokens);
-    textWrap.append(title);
+    title.innerHTML = highlightMatch(formattedTitle, queryTokens);
+    titleRow.append(title);
+
+    const navPath = getNavigationPath(item);
+    let subSegments = [];
+    if (groupPath && groupPath.length > 0) {
+      const isPrefix = groupPath.every((seg, idx) => seg === navPath[idx]);
+      if (isPrefix) {
+        subSegments = navPath.slice(groupPath.length);
+      } else {
+        subSegments = navPath;
+      }
+    } else {
+      const selectedPath = state.query.trim() ? null : selectedNavigationPath();
+      if (selectedPath && selectedPath.length > 0) {
+        const isPrefix = selectedPath.every((seg, idx) => seg === navPath[idx]);
+        if (isPrefix) {
+          subSegments = navPath.slice(selectedPath.length);
+        } else {
+          subSegments = navPath;
+        }
+      } else if (state.query.trim()) {
+        subSegments = navPath;
+      }
+    }
+
+    if (subSegments.length > 0) {
+      const context = document.createElement("span");
+      context.className = "bookmark-context";
+      const formattedSegments = subSegments.map((seg) => {
+        const { emoji, label } = extractLeadingEmoji(seg);
+        return emoji ? `${emoji} ${label}` : label;
+      });
+      context.textContent = formattedSegments.join(" › ");
+      context.title = navPath.join(" › ");
+      titleRow.append(context);
+    }
+    textWrap.append(titleRow);
 
     const domainLine = document.createElement("span");
     domainLine.className = "bookmark-domain-line";
@@ -2588,14 +2698,6 @@
       ? urlPathPreview(item.url, queryTokens)
       : restrictedBookmarkLabel(item.url), queryTokens);
     domainLine.append(domain);
-
-    const navPath = getNavigationPath(item);
-    if (navPath.length > 0) {
-      const context = document.createElement("span");
-      context.className = "bookmark-context";
-      context.textContent = navPath.join(" › ");
-      domainLine.append(context);
-    }
 
     textWrap.append(domainLine);
     link.append(faviconWrap, textWrap);
@@ -5643,12 +5745,17 @@
   });
 
   // Shortcuts dialog
-  refs.shortcutsButton.addEventListener("click", () => {
+  refs.shortcutsButton?.addEventListener("click", () => {
+    rememberDialogFocus(refs.shortcutsDialog, refs.shortcutsButton);
+    closeActionsMenu();
+    refs.shortcutsDialog.showModal();
+  });
+  refs.shortcutsMenuItem?.addEventListener("click", () => {
     rememberDialogFocus(refs.shortcutsDialog, refs.actionsButton);
     closeActionsMenu();
     refs.shortcutsDialog.showModal();
   });
-  refs.footerShortcutsLink.addEventListener("click", () => {
+  refs.footerShortcutsLink?.addEventListener("click", () => {
     rememberDialogFocus(refs.shortcutsDialog, refs.footerShortcutsLink);
     refs.shortcutsDialog.showModal();
   });

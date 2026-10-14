@@ -33,11 +33,6 @@
         <div class="tabs-wrap sidebar-tabs-wrap">
           <nav class="tabs" id="tabs" aria-label="书签文件夹导航"></nav>
         </div>
-
-        <div class="sidebar-footer">
-          <span class="sidebar-footer-mark"><span></span></span>
-          <span id="sidebarStorageStatus">实时同步状态见顶栏</span>
-        </div>
       </aside>
 
       <div class="workspace-column">
@@ -75,6 +70,11 @@
             <span>添加</span>
           </button>
 
+
+          <!-- Shortcuts Button in Header -->
+          <button class="icon-button header-icon-btn" id="shortcutsButton" type="button" aria-label="快捷键指南 (?)" title="快捷键指南 (?)">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="17" r="1" fill="currentColor"/></svg>
+          </button>
 
           <!-- Actions Dropdown -->
           <div class="actions-wrap">
@@ -114,7 +114,7 @@
               <button id="appearanceMenuItem" type="button">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21a9 9 0 1 1 9-9c0 2.5-2 4-4 4h-2.5a2.5 2.5 0 0 0-1.8 4.2c.4.5.3 1.3-.3 1.6-.5.2-1.1.2-1.4.2Z"/><circle cx="7.5" cy="11.5" r="1.2"/><circle cx="10.5" cy="7.5" r="1.2"/><circle cx="15" cy="7.5" r="1.2"/></svg> 外观设置
               </button>
-              <button id="shortcutsButton" type="button">
+              <button id="shortcutsMenuItem" type="button">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="3"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M6 12h.01M18 12h.01M8 16h8"/></svg> 快捷键指南 (?)
               </button>
             </div>
@@ -151,14 +151,6 @@
       <!-- Main Bookmarks Content -->
       <section class="content" id="content" tabindex="-1" aria-label="书签内容"></section>
 
-      <!-- Minimal Footer -->
-      <footer class="app-footer">
-        <div class="footer-left">
-          <span class="brand-subtext" id="countLine">把常用网址，收在顺手的位置</span>
-          <button type="button" class="footer-link" id="footerShortcutsLink">快捷键 (?)</button>
-        </div>
-        <span id="footerCount">0 个书签</span>
-      </footer>
       </div>
     </main>
 
