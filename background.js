@@ -3,33 +3,43 @@ const MENU_SAVE_PAGE = "markdock-save-page";
 const MENU_SAVE_LINK = "markdock-save-link";
 const MENU_OPEN_GALLERY = "markdock-open-gallery";
 
+let isSettingUpMenus = false;
+
 function setupContextMenus() {
-  if (!chrome.contextMenus) return;
+  if (!chrome.contextMenus || isSettingUpMenus) return;
+  isSettingUpMenus = true;
   chrome.contextMenus.removeAll(() => {
     void chrome.runtime.lastError;
-    chrome.contextMenus.create({
-      id: MENU_SAVE_PAGE,
-      title: "将当前页面保存到 MarkDock 书签坞",
-      contexts: ["page"]
-    });
-    chrome.contextMenus.create({
-      id: MENU_SAVE_LINK,
-      title: "将此链接保存到 MarkDock 书签坞",
-      contexts: ["link"]
-    });
-    chrome.contextMenus.create({
-      id: MENU_OPEN_GALLERY,
-      title: "打开 MarkDock 书签坞工作台",
-      contexts: ["action"]
-    });
+    const menus = [
+      {
+        id: MENU_SAVE_PAGE,
+        title: "将当前页面保存到 MarkDock 书签坞",
+        contexts: ["page"]
+      },
+      {
+        id: MENU_SAVE_LINK,
+        title: "将此链接保存到 MarkDock 书签坞",
+        contexts: ["link"]
+      },
+      {
+        id: MENU_OPEN_GALLERY,
+        title: "打开 MarkDock 书签坞工作台",
+        contexts: ["action"]
+      }
+    ];
+
+    for (const item of menus) {
+      chrome.contextMenus.create(item, () => {
+        // Checking chrome.runtime.lastError prevents Chrome from logging
+        // "Unchecked runtime.lastError: Cannot create item with duplicate id"
+        void chrome.runtime.lastError;
+      });
+    }
+    isSettingUpMenus = false;
   });
 }
 
 chrome.runtime.onInstalled.addListener(() => {
-  setupContextMenus();
-});
-
-chrome.runtime.onStartup?.addListener(() => {
   setupContextMenus();
 });
 
