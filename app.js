@@ -113,7 +113,7 @@
     auditDialog: $("#auditDialog"), auditSummary: $("#auditSummary"), auditResults: $("#auditResults"),
     auditCancelButton: $("#cancelAuditButton"),
     auditProgressWrap: $("#auditProgressWrap"), auditProgressBar: $("#auditProgressBar"), mergeButton: $("#mergeDuplicatesButton"),
-    contextMenu: $("#contextMenu"), tooltip: $("#bookmarkTooltip"), contextFavoriteLabel: $("#contextFavoriteLabel"),
+    contextMenu: $("#contextMenu"), tooltip: $("#bookmarkTooltip"), dockFlyout: $("#sidebarDockFlyout"), contextFavoriteLabel: $("#contextFavoriteLabel"),
     sidebarCollapseButton: $("#sidebarCollapseButton"),
     selectionToolbar: $("#selectionToolbar"), selectionCount: $("#selectionCount"),
     selectAllResultsButton: $("#selectAllResultsButton"), clearSelectionButton: $("#clearSelectionButton"),
@@ -1478,6 +1478,19 @@
     if (count === 0) badge.hidden = true;
     button.append(name, badge);
     button.addEventListener("click", () => selectNavigationTab(id));
+
+    const tabInfo = {
+      id,
+      title: label,
+      count,
+      kind,
+      emoji: null,
+      children: [],
+      node: null
+    };
+    button.addEventListener("mouseenter", () => showDockFlyout(button, tabInfo));
+    button.addEventListener("mouseleave", scheduleHideDockFlyout);
+
     return button;
   }
 
@@ -1591,6 +1604,18 @@
       if (node.count === 0) badge.hidden = true;
       select.append(tabIconElement, name, badge);
       select.addEventListener("click", () => selectNavigationTab(node.id, node));
+
+      const folderInfo = {
+        id: node.id,
+        title: emoji ? (cleanLabel || node.label) : node.label,
+        count: node.count,
+        kind: "folder",
+        emoji: emoji || null,
+        children: node.children || [],
+        node
+      };
+      select.addEventListener("mouseenter", () => showDockFlyout(select, folderInfo));
+      select.addEventListener("mouseleave", scheduleHideDockFlyout);
 
       const more = document.createElement("button");
       more.type = "button";
@@ -4308,6 +4333,117 @@
     refs.tooltip.style.top = `${py}px`;
   }
 
+  let dockFlyoutHideTimer;
+  let dockFlyoutActiveElement = null;
+
+  function hideDockFlyout() {
+    clearTimeout(dockFlyoutHideTimer);
+    dockFlyoutActiveElement = null;
+    if (refs.dockFlyout) refs.dockFlyout.hidden = true;
+  }
+
+  function scheduleHideDockFlyout() {
+    clearTimeout(dockFlyoutHideTimer);
+    dockFlyoutHideTimer = setTimeout(hideDockFlyout, 180);
+  }
+
+  function showDockFlyout(targetElement, info) {
+    if (!refs.dockFlyout || document.documentElement.dataset.sidebarCollapsed !== "true") return;
+    clearTimeout(dockFlyoutHideTimer);
+    dockFlyoutActiveElement = targetElement;
+
+    refs.dockFlyout.innerHTML = "";
+
+    // 1. Header (Folder / Category title + count)
+    const header = document.createElement("div");
+    header.className = "dock-flyout-header";
+    header.setAttribute("role", "button");
+    header.tabIndex = 0;
+
+    const iconSpan = document.createElement("span");
+    iconSpan.className = "dock-flyout-icon";
+    if (info.emoji) {
+      iconSpan.textContent = info.emoji;
+    } else if (info.kind === "all") {
+      iconSpan.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>`;
+    } else if (info.kind === "favorites") {
+      iconSpan.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`;
+    } else {
+      iconSpan.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-6.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 4H5a2 2 0 0 0-2 2v1z"/></svg>`;
+    }
+
+    const titleSpan = document.createElement("span");
+    titleSpan.className = "dock-flyout-title";
+    titleSpan.textContent = info.title;
+
+    const countSpan = document.createElement("span");
+    countSpan.className = "dock-flyout-count";
+    countSpan.textContent = `${info.count} 个书签`;
+
+    header.append(iconSpan, titleSpan, countSpan);
+    header.addEventListener("click", () => {
+      selectNavigationTab(info.id, info.node);
+      hideDockFlyout();
+    });
+    header.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        selectNavigationTab(info.id, info.node);
+        hideDockFlyout();
+      }
+    });
+    refs.dockFlyout.append(header);
+
+    // 2. Subfolders (if any)
+    if (info.children && info.children.length > 0) {
+      const list = document.createElement("div");
+      list.className = "dock-flyout-children";
+
+      info.children.forEach((child) => {
+        const childBtn = document.createElement("button");
+        childBtn.type = "button";
+        childBtn.className = "dock-flyout-child-item";
+        if (state.activeTab === child.id) childBtn.classList.add("is-active");
+
+        const { emoji: cEmoji, label: cLabel } = extractLeadingEmoji(child.label);
+        const cIcon = document.createElement("span");
+        cIcon.className = "dock-flyout-child-icon";
+        if (cEmoji) {
+          cIcon.textContent = cEmoji;
+        } else {
+          cIcon.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-6.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 4H5a2 2 0 0 0-2 2v1z"/></svg>`;
+        }
+
+        const cName = document.createElement("span");
+        cName.className = "dock-flyout-child-name";
+        cName.textContent = cEmoji ? (cLabel || child.label) : child.label;
+
+        const cCount = document.createElement("span");
+        cCount.className = "dock-flyout-child-count";
+        cCount.textContent = String(child.count);
+
+        childBtn.append(cIcon, cName, cCount);
+        childBtn.addEventListener("click", () => {
+          selectNavigationTab(child.id, child);
+          hideDockFlyout();
+        });
+        list.append(childBtn);
+      });
+      refs.dockFlyout.append(list);
+    }
+
+    refs.dockFlyout.hidden = false;
+    const targetBox = targetElement.getBoundingClientRect();
+    const flyoutBox = refs.dockFlyout.getBoundingClientRect();
+
+    const left = Math.round(targetBox.right + 10);
+    let top = Math.round(targetBox.top + (targetBox.height / 2) - (flyoutBox.height / 2));
+    top = Math.max(12, Math.min(window.innerHeight - flyoutBox.height - 12, top));
+
+    refs.dockFlyout.style.left = `${left}px`;
+    refs.dockFlyout.style.top = `${top}px`;
+  }
+
   function hideContextMenu({ restoreFocus = false } = {}) {
     const returnFocus = contextMenuReturnFocus;
     contextMenuReturnFocus = null;
@@ -5670,6 +5806,7 @@
   });
 
   refs.sidebarCollapseButton.addEventListener("click", () => {
+    hideDockFlyout();
     state.sidebarCollapsed = !state.sidebarCollapsed;
     saveViewPreferences();
     render({ refreshNavigation: false });
@@ -6050,10 +6187,14 @@
   window.addEventListener("scroll", () => {
     hideContextMenu();
     hideBookmarkTooltip();
+    hideDockFlyout();
   }, { passive: true });
 
   refs.tooltip.addEventListener("mouseenter", () => clearTimeout(tooltipHideTimer));
   refs.tooltip.addEventListener("mouseleave", hideBookmarkTooltip);
+
+  refs.dockFlyout?.addEventListener("mouseenter", () => clearTimeout(dockFlyoutHideTimer));
+  refs.dockFlyout?.addEventListener("mouseleave", scheduleHideDockFlyout);
 
   window.matchMedia("(max-width: 900px)").addEventListener("change", () => renderTabs());
 
