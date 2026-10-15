@@ -14,11 +14,40 @@
   <img src="https://img.shields.io/badge/License-MIT-emerald.svg" alt="License" />
 </p>
 
+<p align="center">
+  <img src="assets/preview/hero-dark.png" alt="MarkDock 书签坞主界面预览" width="100%" />
+</p>
+
 ---
 
 ## 📖 简介
 
 **MarkDock 书签坞** 是一款专为高效信息整理者打造的现代化浏览器书签管理扩展与独立工作台。告别传统浏览器书签栏杂乱堆叠的痛点，MarkDock 提供 **4 列响应式栅格卡片**、**现代极简 Dock 坞与毛玻璃飞出卡片**、**极致视觉降噪与呼吸感设计**、**Chromium 原生书签自动实时同步**以及**全键盘驱动的极速检索体验**。
+
+---
+
+## 📸 界面预览 / Screenshots
+
+### 🌓 极简通透的双主题架构 (Dark & Light Mode)
+> 无论是低光环境下的暗黑沉浸，还是日间高亮下的象牙纯白，均具备出色的呼吸感与层次过渡。
+
+| 🌙 暗黑极客模式 (Dark Mode) | ☀️ 纯白优雅模式 (Light Mode) |
+| :---: | :---: |
+| <img src="assets/preview/hero-dark.png" width="100%" alt="暗黑模式主界面" /> | <img src="assets/preview/hero-light.png" width="100%" alt="白色模式主界面" /> |
+
+### 🚀 极简现代 Dock 坞与毛玻璃飞出卡片 (Dock Flyout)
+> 一键折叠侧边栏，转换为 macOS 风格现代 Dock 坞；鼠标悬停即刻平滑滑出毛玻璃信息卡，支持多级子目录穿透点击直达。
+
+<p align="center">
+  <img src="assets/preview/dock-flyout.png" alt="折叠 Dock 坞与毛玻璃飞出卡片" width="95%" />
+</p>
+
+### 🎨 沉浸式外观背景与个性化质感 (Appearance & Wallpapers)
+> 支持默认微光、流光渐变、质感纯色、精选矢量壁纸与微软 Bing 每日 4K 高清壁纸自动同步；更有微质感科技点阵网格与卡片毛玻璃通透浮雕质感。
+
+<p align="center">
+  <img src="assets/preview/appearance-modal.png" alt="外观背景定制面板" width="85%" />
+</p>
 
 ---
 
