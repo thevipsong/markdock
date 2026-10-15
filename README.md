@@ -10,7 +10,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Manifest-V3-4285F4?logo=googlechrome&logoColor=white" alt="Manifest V3" />
-  <img src="https://img.shields.io/badge/Version-2.3.0-indigo" alt="Version" />
+  <img src="https://img.shields.io/badge/Version-2.4.0-indigo" alt="Version" />
   <img src="https://img.shields.io/badge/License-MIT-emerald.svg" alt="License" />
 </p>
 
@@ -18,12 +18,16 @@
 
 ## 📖 简介
 
-**MarkDock 书签坞** 是一款专为高效信息整理者打造的现代化浏览器书签管理扩展与独立工作台。告别传统浏览器书签栏杂乱堆叠的痛点，MarkDock 提供 **4 列响应式栅格卡片**、**极致视觉降噪与呼吸感设计**、**Chromium 原生书签自动实时同步**以及**全键盘驱动的极速检索体验**。
+**MarkDock 书签坞** 是一款专为高效信息整理者打造的现代化浏览器书签管理扩展与独立工作台。告别传统浏览器书签栏杂乱堆叠的痛点，MarkDock 提供 **4 列响应式栅格卡片**、**现代极简 Dock 坞与毛玻璃飞出卡片**、**极致视觉降噪与呼吸感设计**、**Chromium 原生书签自动实时同步**以及**全键盘驱动的极速检索体验**。
 
 ---
 
 ## ✨ 核心特性
 
+- 🚀 **极简现代 Dock 坞与智能飞出卡片 (v2.4.0)**
+  - **折叠状态极简规整**：一键收起侧栏后自动隐藏树状缩进线与深层嵌套，转换为精致的 42px 居中圆角卡位 Dock 坞，提供活动项微光指示点（Accent Dot）。
+  - **智能毛玻璃飞出卡片（Dock Flyout）**：鼠标悬停任一 Dock 节点即刻平滑滑出毛玻璃信息卡，展示文件夹全名、书签总数与深层子目录列表，支持一键穿透直达。
+  - **平滑避让排版**：侧边栏文件夹悬停时数字徽标平滑左移让位，彻底消除三点按钮（`···`）与书签数量碰撞，保持规整呼吸感。
 - 🎨 **通透悬浮布局与精致视觉降噪**
   - **通透悬浮顶栏**：打通顶部 Header 外框，Logo 与搜索胶囊自然悬浮于画布背景，空间感彻底展开。
   - **100% 完整域名呈现**：卡片子目录标签移至标题行右上角，第二行独占 100% 宽度，局域网 IP、端口与长域名不再被过度截断。
