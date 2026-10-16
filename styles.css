@@ -2975,6 +2975,15 @@ button:disabled,
   gap: 6px;
   min-width: 0;
   width: 100%;
+  padding-right: 0;
+  transition: padding-right 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.bookmark-card:has(.bookmark-actions.favorite-always) .bookmark-title-row {
+  padding-right: 28px;
+}
+.bookmark-card:hover .bookmark-title-row,
+.bookmark-card:focus-within .bookmark-title-row {
+  padding-right: 92px !important;
 }
 .bookmark-card .bookmark-title {
   flex: 1;
@@ -3021,7 +3030,7 @@ button:disabled,
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  transition: opacity 0.15s ease;
+  transition: max-width 0.18s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.15s ease, padding 0.18s ease, margin 0.18s ease;
 }
 :root[data-theme="dark"] .bookmark-context {
   background: rgba(255, 255, 255, 0.08);
@@ -3029,26 +3038,62 @@ button:disabled,
 }
 .bookmark-card:hover .bookmark-context,
 .bookmark-card:focus-within .bookmark-context {
-  opacity: 0;
+  max-width: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  opacity: 0 !important;
   pointer-events: none;
 }
 .bookmark-card:has(.bookmark-actions.favorite-always) .bookmark-context {
-  margin-right: 22px;
+  margin-right: 2px;
 }
 .bookmark-card .bookmark-actions {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: 6px;
+  right: 6px;
+  display: flex;
+  align-items: center;
   gap: 2px;
+  padding: 2px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
   opacity: 0;
+  pointer-events: none;
+  z-index: 3;
+  transition: opacity 0.15s ease, background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.bookmark-card .bookmark-actions.favorite-always {
+  opacity: 1;
+}
+.bookmark-card .bookmark-actions.favorite-always .mini-button.is-favorite {
+  pointer-events: auto;
+}
+.bookmark-card .bookmark-actions.favorite-always .mini-button:not(.is-favorite) {
+  display: none;
 }
 .bookmark-card:hover .bookmark-actions,
-.bookmark-card:focus-within .bookmark-actions,
-.bookmark-card .bookmark-actions.favorite-always { opacity: 1; }
+.bookmark-card:focus-within .bookmark-actions {
+  opacity: 1;
+  pointer-events: auto;
+  background: var(--surface-raised);
+  border-color: var(--line);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.bookmark-card:hover .bookmark-actions .mini-button,
+.bookmark-card:focus-within .bookmark-actions .mini-button {
+  display: grid !important;
+  pointer-events: auto;
+}
+:root[data-theme="light"] .bookmark-card:hover .bookmark-actions,
+:root[data-theme="light"] .bookmark-card:focus-within .bookmark-actions {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+}
 .bookmark-card .mini-button { width: 26px; height: 26px; }
-.bookmark-card .bookmark-actions.favorite-always .mini-button:not(.is-favorite) { display: none; }
-.bookmark-card:hover .bookmark-actions.favorite-always .mini-button:not(.is-favorite),
-.bookmark-card:focus-within .bookmark-actions.favorite-always .mini-button:not(.is-favorite) { display: grid; }
 .bookmark-grid .bookmark-card:has(.bookmark-actions.favorite-always) .bookmark-context { padding-right: 0; }
 .workspace-column .content[data-view-mode="list"] .bookmark-grid {
   grid-template-columns: minmax(0, 1fr);
@@ -4187,7 +4232,7 @@ button, .button, .tab, .bookmark-title { font-weight: 620; }
   min-height: 68px;
   max-height: 68px;
   box-sizing: border-box;
-  padding: 10px 34px 10px 12px;
+  padding: 10px 12px;
   border-radius: 11px;
   background: #ffffff;
   border: 1px solid rgba(0, 0, 0, 0.045);
@@ -4292,48 +4337,10 @@ button, .button, .tab, .bookmark-title { font-weight: 620; }
   font-size: 13px;
 }
 
-/* --------------------------------------------------------------------------
-   二级路径微型浅色胶囊标签（Pill Tag）
-   -------------------------------------------------------------------------- */
-.bookmark-context {
-  font-size: 10px;
-  color: var(--text-muted);
-  display: inline-flex;
-  align-items: center;
-  max-width: 96px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  background: var(--surface-soft, rgba(0, 0, 0, 0.04));
-  padding: 1px 6px;
-  border-radius: 4px;
-  line-height: 1.35;
-  flex-shrink: 0;
-  transition: opacity 0.15s ease;
-}
-:root[data-theme="dark"] .bookmark-context {
-  background: rgba(255, 255, 255, 0.08);
-  color: #9da0a8;
-}
-
 /* 收藏星标颜色与样式优化 */
 .mini-button.is-favorite svg.star-active {
   fill: #eab308 !important;
   color: #eab308 !important;
-}
-.bookmark-card .bookmark-actions {
-  position: absolute;
-  top: 7px;
-  right: 7px;
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
-.bookmark-card .bookmark-actions.favorite-always .mini-button.is-favorite {
-  opacity: 0.75;
-}
-.bookmark-card:hover .bookmark-actions.favorite-always .mini-button.is-favorite {
-  opacity: 1;
 }
 
 /* --------------------------------------------------------------------------
