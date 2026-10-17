@@ -4472,7 +4472,7 @@
     const menuHeight = refs.contextMenu.offsetHeight || 220;
     refs.contextMenu.style.left = `${Math.max(8, Math.min(x, innerWidth - menuWidth - 8))}px`;
     refs.contextMenu.style.top = `${Math.max(8, Math.min(y, innerHeight - menuHeight - 8))}px`;
-    refs.contextMenu.querySelector("button")?.focus();
+    refs.contextMenu.querySelector("button")?.focus({ preventScroll: true });
   }
 
   function canRenameChromeFolder(folderId) {
@@ -4511,7 +4511,7 @@
     const menuHeight = refs.contextMenu.offsetHeight || 180;
     refs.contextMenu.style.left = `${Math.max(8, Math.min(x, innerWidth - menuWidth - 8))}px`;
     refs.contextMenu.style.top = `${Math.max(8, Math.min(y, innerHeight - menuHeight - 8))}px`;
-    refs.contextMenu.querySelector('[data-menu-kind="folder"][role="menuitem"]:not([hidden]):not(:disabled)')?.focus();
+    refs.contextMenu.querySelector('[data-menu-kind="folder"][role="menuitem"]:not([hidden]):not(:disabled)')?.focus({ preventScroll: true });
   }
 
   function openSubfolderDialog(parentNode, focusOrigin = document.activeElement) {
@@ -6137,7 +6137,17 @@
     }
   });
 
+  refs.contextMenu.addEventListener("mousedown", (event) => {
+    // Prevent mouse down within the menu from blurring focus to body (common on macOS Chrome),
+    // which would fire focusout and prematurely dismiss the menu before click event execution.
+    event.preventDefault();
+  });
+
   refs.contextMenu.addEventListener("keydown", (event) => {
+    if (event.key === "Tab") {
+      hideContextMenu({ restoreFocus: true });
+      return;
+    }
     if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
     const items = [...refs.contextMenu.querySelectorAll('[role="menuitem"]:not([hidden]):not(:disabled)')];
     if (!items.length) return;
@@ -6150,16 +6160,26 @@
     else nextIndex = (currentIndex + (event.key === "ArrowDown" ? 1 : -1) + items.length) % items.length;
     items[nextIndex].focus();
   });
-  refs.contextMenu.addEventListener("focusout", () => {
+  refs.contextMenu.addEventListener("focusout", (event) => {
+    if (refs.contextMenu.contains(event.relatedTarget) || refs.contextMenu.matches(":hover")) return;
     queueMicrotask(() => {
-      if (!refs.contextMenu.hidden && !refs.contextMenu.contains(document.activeElement)) hideContextMenu();
+      if (!refs.contextMenu.hidden && !refs.contextMenu.matches(":hover") && !refs.contextMenu.contains(document.activeElement)) {
+        hideContextMenu();
+      }
     });
+  });
+
+  // Pointerdown outside listener to dismiss context menu immediately on click outside
+  document.addEventListener("pointerdown", (event) => {
+    if (!refs.contextMenu.hidden && !event.target.closest("#contextMenu") && !event.target.closest(".bookmark-actions") && !event.target.closest(".nav-more")) {
+      hideContextMenu();
+    }
   });
 
   // Click outside listener for menus (including sort & view settings menus)
   document.addEventListener("click", (event) => {
     if (!event.target.closest(".actions-wrap")) closeActionsMenu();
-    if (!event.target.closest("#contextMenu") && !event.target.closest(".bookmark-actions")) {
+    if (!event.target.closest("#contextMenu") && !event.target.closest(".bookmark-actions") && !event.target.closest(".nav-more")) {
       hideContextMenu();
     }
     $$(".view-settings-wrap").forEach((wrap) => {

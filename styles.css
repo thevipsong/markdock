@@ -1641,24 +1641,32 @@ mark.search-highlight {
   fill: none;
   flex: none;
 }
-.context-menu button:hover, .context-menu button:focus-visible {
+.context-menu button:hover,
+.context-menu button:focus,
+.context-menu button:focus-visible {
   background: var(--accent-soft);
   color: var(--accent);
+  outline: none;
 }
 .context-menu button:disabled,
 .context-menu button:disabled:hover,
+.context-menu button:disabled:focus,
 .context-menu button:disabled:focus-visible {
   background: transparent;
   color: var(--text-muted);
   opacity: 0.56;
   cursor: not-allowed;
+  outline: none;
 }
 .context-menu button.danger-action {
   color: var(--danger);
 }
-.context-menu button.danger-action:hover {
+.context-menu button.danger-action:hover,
+.context-menu button.danger-action:focus,
+.context-menu button.danger-action:focus-visible {
   background: var(--danger-soft);
   color: var(--danger);
+  outline: none;
 }
 
 /* Non-intrusive Bottom-Left URL Preview (Native Browser Bubble Style) */
