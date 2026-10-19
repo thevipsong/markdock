@@ -3854,6 +3854,8 @@ textarea,
   letter-spacing: -0.01em;
   color: var(--text);
 }
+.content-heading { padding-inline: 0; }
+.bookmark-group-heading { padding-inline: 0 !important; }
 
 .bookmark-group-count {
   flex: none;
@@ -5386,6 +5388,81 @@ button, .button, .tab, .bookmark-title { font-weight: 620; }
   font-weight: 650;
   line-height: 1.2;
 }
+
+.workspace-column .search-wrap { justify-self: start; }
+
+/* Opaque enough to protect contrast, with a true frosted edge over photos. */
+:root[data-theme="dark"][data-wallpaper-mode="custom"]:not([data-card-glass="true"]) .bookmark-card:not(.is-selected) {
+  background: rgba(21, 26, 38, .9);
+  border-color: rgba(255, 255, 255, .10);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  backdrop-filter: blur(20px) saturate(140%);
+}
+:root[data-theme="dark"][data-wallpaper-mode="custom"]:not([data-card-glass="true"]) .bookmark-card:hover,
+:root[data-theme="dark"][data-wallpaper-mode="custom"]:not([data-card-glass="true"]) .bookmark-card:focus-within {
+  background: rgba(26, 32, 46, .95);
+  border-color: rgba(255, 255, 255, .15);
+}
+:root[data-theme="light"][data-wallpaper-mode="custom"][data-card-glass="true"] .bookmark-card:not(.is-selected) {
+  background: rgba(255, 255, 255, .84) !important;
+  border-color: rgba(255, 255, 255, .58) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(140%) !important;
+  backdrop-filter: blur(20px) saturate(140%) !important;
+  box-shadow: 0 4px 16px rgba(18, 28, 44, .07), inset 0 1px 0 rgba(255, 255, 255, .55) !important;
+}
+:root[data-theme="dark"][data-wallpaper-mode="custom"][data-card-glass="true"] .bookmark-card:not(.is-selected) {
+  background: rgba(21, 26, 38, .79) !important;
+  border-color: rgba(255, 255, 255, .09) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(140%) !important;
+  backdrop-filter: blur(20px) saturate(140%) !important;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, .24), inset 0 1px 0 rgba(255, 255, 255, .055) !important;
+}
+:root[data-theme="light"][data-wallpaper-mode="custom"][data-card-glass="true"] .bookmark-card:hover,
+:root[data-theme="light"][data-wallpaper-mode="custom"][data-card-glass="true"] .bookmark-card:focus-within {
+  background: rgba(255, 255, 255, .93) !important;
+  border-color: rgba(255, 255, 255, .72) !important;
+}
+:root[data-theme="dark"][data-wallpaper-mode="custom"][data-card-glass="true"] .bookmark-card:hover,
+:root[data-theme="dark"][data-wallpaper-mode="custom"][data-card-glass="true"] .bookmark-card:focus-within {
+  background: rgba(26, 32, 46, .9) !important;
+  border-color: rgba(255, 255, 255, .14) !important;
+}
+:root[data-theme="light"][data-wallpaper-mode="custom"] .sidebar {
+  background: rgba(255, 255, 255, .88) !important;
+  border-color: rgba(255, 255, 255, .62) !important;
+  -webkit-backdrop-filter: blur(26px) saturate(145%) !important;
+  backdrop-filter: blur(26px) saturate(145%) !important;
+}
+:root[data-theme="dark"][data-wallpaper-mode="custom"] .sidebar {
+  background: rgba(17, 21, 30, .88) !important;
+  border-color: rgba(255, 255, 255, .09) !important;
+  -webkit-backdrop-filter: blur(26px) saturate(145%) !important;
+  backdrop-filter: blur(26px) saturate(145%) !important;
+}
+:root[data-theme="light"][data-wallpaper-mode="custom"]:not([data-card-glass="true"]) .bookmark-card:not(.is-selected) {
+  background: rgba(255, 255, 255, .9) !important;
+  border-color: rgba(255, 255, 255, .68) !important;
+  box-shadow: 0 3px 12px rgba(18, 28, 44, .06), inset 0 1px 0 rgba(255, 255, 255, .52) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(140%) !important;
+  backdrop-filter: blur(20px) saturate(140%) !important;
+}
+:root[data-theme="light"][data-wallpaper-mode="custom"]:not([data-card-glass="true"]) .bookmark-card:hover,
+:root[data-theme="light"][data-wallpaper-mode="custom"]:not([data-card-glass="true"]) .bookmark-card:focus-within {
+  background: rgba(255, 255, 255, .96) !important;
+  border-color: rgba(255, 255, 255, .86) !important;
+}
+:root[data-theme="light"][data-wallpaper-mode="custom"] .bookmark-group-heading h3 {
+  color: var(--text);
+  text-shadow: 0 1px 1px rgba(255, 255, 255, .4);
+}
+:root[data-theme="dark"][data-wallpaper-mode="custom"] .bookmark-group-heading h3 {
+  color: var(--text);
+  text-shadow: 0 1px 5px rgba(0, 0, 0, .36);
+}
+:root[data-theme="light"][data-wallpaper-mode="custom"] .bookmark-group-count {
+  color: var(--text-muted);
+  text-shadow: none;
+}
 .content-heading .content-caption { margin: 0; }
 .view-settings-button,
 .sort-settings-button,
@@ -5451,6 +5528,109 @@ button, .button, .tab, .bookmark-title { font-weight: 620; }
   .workspace-column .titlebar .header-icon-btn,
   .workspace-column .titlebar .theme-toggle,
   .workspace-column .titlebar .quick-add-btn { width: 34px; height: 36px; min-height: 36px; }
+}
+
+/* Keep photo wallpapers legible across both themes and image sources. */
+:root[data-wallpaper-mode="custom"] .backdrop-image::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  display: block;
+  pointer-events: none;
+}
+:root[data-theme="dark"][data-wallpaper-mode="custom"] .backdrop-image::after {
+  background: linear-gradient(180deg, rgba(8, 12, 20, .24) 0%, rgba(8, 12, 20, .5) 100%);
+}
+:root[data-theme="light"][data-wallpaper-mode="custom"] .backdrop-image::after {
+  background: linear-gradient(180deg, rgba(18, 31, 51, .035) 0%, rgba(18, 31, 51, .13) 100%);
+}
+:root[data-theme="dark"][data-wallpaper-mode="custom"] .backdrop-overlay {
+  background: linear-gradient(180deg, rgba(8, 12, 20, .52) 0%, rgba(8, 12, 20, .72) 100%);
+}
+:root[data-theme="light"][data-wallpaper-mode="custom"] .backdrop-overlay {
+  background: linear-gradient(180deg, rgba(18, 31, 51, .12) 0%, rgba(18, 31, 51, .24) 100%);
+}
+
+/* Wallpaper headers stay open at rest, then gain a soft sticky backing on scroll. */
+.workspace-column .titlebar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  isolation: isolate;
+  padding-inline: 0 !important;
+}
+.workspace-column .titlebar::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: 0 -20px;
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg-canvas) 78%, transparent);
+  opacity: 0;
+  pointer-events: none;
+  backdrop-filter: blur(18px) saturate(135%);
+  -webkit-backdrop-filter: blur(18px) saturate(135%);
+  transition: opacity .2s ease;
+}
+.workspace-column .titlebar > * { position: relative; z-index: 1; }
+:root[data-wallpaper-mode="custom"] .workspace-column .titlebar[data-scrolled]::before { opacity: 1; }
+:root[data-wallpaper-mode="custom"] .workspace-column .titlebar {
+  border-color: transparent !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Folder rows are labels in a tree; only interaction states receive a surface. */
+.sidebar .nav-folder-tab {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+.sidebar .nav-folder-tab:hover,
+.sidebar .nav-folder-tab:focus-visible,
+.sidebar .nav-node-row:focus-within .nav-folder-tab {
+  background: var(--surface-hover);
+  border-color: transparent;
+}
+.sidebar .nav-folder-tab[aria-current="page"] {
+  color: var(--accent);
+  background: var(--tab-active-bg);
+  border-color: transparent;
+  box-shadow: none;
+}
+:root[data-theme="dark"] .sidebar .nav-node-children { border-left-color: rgba(183, 194, 214, .09); }
+:root[data-theme="light"] .sidebar .nav-node-children { border-left-color: rgba(31, 45, 68, .11); }
+
+/* More separation for dark favicons and clearer section labels. */
+:root[data-theme="dark"] .bookmark-favicon-wrap[data-icon-surface="dark"] {
+  background: rgba(255, 255, 255, .13);
+  border-color: rgba(255, 255, 255, .17);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .045);
+}
+:root[data-theme="dark"] .bookmark-favicon-wrap[data-icon-contrast="unknown"] {
+  background: rgba(255, 255, 255, .11);
+  border-color: rgba(255, 255, 255, .14);
+}
+.bookmark-group { gap: 14px; margin-bottom: 24px; }
+.bookmark-group-heading h3 {
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: -.02em;
+}
+.bookmark-group-count {
+  flex: none;
+  padding: 3px 8px !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 7px;
+  background: var(--surface-soft) !important;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+  line-height: 1.2;
 }
 
 

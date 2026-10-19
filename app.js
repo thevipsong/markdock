@@ -2495,7 +2495,7 @@
       const countNum = group.visibleItems.length < group.totalCount
         ? `${group.visibleItems.length} / ${group.totalCount}`
         : String(group.totalCount);
-      count.textContent = `· ${countNum}`;
+      count.textContent = countNum;
       count.setAttribute("aria-label", `${group.totalCount} 个书签`);
       heading.append(label, count);
       setupFolderDropTarget(heading, group.path, navigationNodeAtPath(group.path)?.folderId || null);
@@ -6509,7 +6509,13 @@
     });
   });
 
+  const stickyTitlebar = $(".workspace-column .titlebar");
+  const updateStickyTitlebarSurface = () => {
+    stickyTitlebar?.toggleAttribute("data-scrolled", window.scrollY > 12);
+  };
+  updateStickyTitlebarSurface();
   window.addEventListener("scroll", () => {
+    updateStickyTitlebarSurface();
     hideContextMenu();
     hideBookmarkTooltip();
     hideDockFlyout();
