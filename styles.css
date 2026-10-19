@@ -3371,13 +3371,14 @@ button:disabled,
   backdrop-filter: blur(20px) saturate(150%) !important;
 }
 
-:root[data-theme="light"][data-wallpaper-mode="custom"] .sidebar,
-:root[data-theme="light"][data-wallpaper-mode="custom"] .titlebar {
+:root[data-theme="light"][data-wallpaper-mode="custom"] .sidebar {
   box-shadow: 0 8px 24px rgba(12, 20, 30, 0.035), inset 0 1px 0 rgba(255, 255, 255, 0.52) !important;
 }
-:root[data-theme="dark"][data-wallpaper-mode="custom"] .sidebar,
-:root[data-theme="dark"][data-wallpaper-mode="custom"] .titlebar {
+:root[data-theme="dark"][data-wallpaper-mode="custom"] .sidebar {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.035) !important;
+}
+:root[data-wallpaper-mode="custom"] .titlebar {
+  box-shadow: none !important;
 }
 
 :root[data-theme="light"][data-wallpaper-mode="custom"]:not([data-card-glass="true"]) .bookmark-card:not(.is-selected) {
