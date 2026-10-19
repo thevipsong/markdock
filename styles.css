@@ -3348,14 +3348,12 @@ button:disabled,
 :root[data-theme="light"][data-wallpaper-mode="custom"] .sidebar {
   background: rgba(255, 255, 255, 0.76) !important;
   border-color: rgba(255, 255, 255, 0.65) !important;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
   -webkit-backdrop-filter: blur(24px) saturate(160%) !important;
   backdrop-filter: blur(24px) saturate(160%) !important;
 }
 :root[data-theme="dark"][data-wallpaper-mode="custom"] .sidebar {
   background: rgba(22, 24, 30, 0.74) !important;
   border-color: rgba(255, 255, 255, 0.08) !important;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
   -webkit-backdrop-filter: blur(24px) saturate(150%) !important;
   backdrop-filter: blur(24px) saturate(150%) !important;
 }
@@ -3363,16 +3361,23 @@ button:disabled,
 :root[data-theme="light"][data-wallpaper-mode="custom"] .titlebar {
   background: rgba(255, 255, 255, 0.72) !important;
   border-color: rgba(255, 255, 255, 0.65) !important;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03), inset 0 1px 0 rgba(255, 255, 255, 0.8) !important;
   -webkit-backdrop-filter: blur(20px) saturate(150%) !important;
   backdrop-filter: blur(20px) saturate(150%) !important;
 }
 :root[data-theme="dark"][data-wallpaper-mode="custom"] .titlebar {
   background: rgba(22, 24, 30, 0.72) !important;
   border-color: rgba(255, 255, 255, 0.07) !important;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
   -webkit-backdrop-filter: blur(20px) saturate(150%) !important;
   backdrop-filter: blur(20px) saturate(150%) !important;
+}
+
+:root[data-theme="light"][data-wallpaper-mode="custom"] .sidebar,
+:root[data-theme="light"][data-wallpaper-mode="custom"] .titlebar {
+  box-shadow: 0 8px 24px rgba(12, 20, 30, 0.035), inset 0 1px 0 rgba(255, 255, 255, 0.52) !important;
+}
+:root[data-theme="dark"][data-wallpaper-mode="custom"] .sidebar,
+:root[data-theme="dark"][data-wallpaper-mode="custom"] .titlebar {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.035) !important;
 }
 
 :root[data-theme="light"][data-wallpaper-mode="custom"]:not([data-card-glass="true"]) .bookmark-card:not(.is-selected) {
