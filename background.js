@@ -55,18 +55,25 @@ async function resolveDefaultBookmarkParentId() {
 }
 
 async function quickSaveBookmark(url, title) {
-  if (!url || !/^https?:\/\//i.test(url)) return null;
-  const parentId = await resolveDefaultBookmarkParentId();
-  const cleanTitle = String(title || "").trim() || new URL(url).hostname.replace(/^www\./, "");
+  let parsedUrl;
   try {
-    const existing = await chrome.bookmarks.search({ url });
+    parsedUrl = new URL(String(url || ""));
+  } catch {
+    return null;
+  }
+  if (!["http:", "https:"].includes(parsedUrl.protocol)) return null;
+  const bookmarkUrl = parsedUrl.href;
+  const parentId = await resolveDefaultBookmarkParentId();
+  const cleanTitle = String(title || "").trim() || parsedUrl.hostname.replace(/^www\./, "");
+  try {
+    const existing = await chrome.bookmarks.search({ url: bookmarkUrl });
     if (existing && existing.length > 0) {
       return { status: "exists", bookmark: existing[0] };
     }
     const created = await chrome.bookmarks.create({
       parentId,
       title: cleanTitle.slice(0, 512),
-      url
+      url: bookmarkUrl
     });
     return { status: "created", bookmark: created };
   } catch (error) {

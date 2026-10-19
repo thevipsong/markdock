@@ -117,8 +117,9 @@
               <button id="shortcutsMenuItem" type="button">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="3"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M6 12h.01M18 12h.01M8 16h8"/></svg> 快捷键指南 (?)
               </button>
+              <a class="actions-menu-link" href="./privacy.html" target="_blank" rel="noopener noreferrer">隐私政策</a>
               <div class="actions-menu-footer">
-                <span>MarkDock v2.4.0</span>
+                <span>MarkDock v2.4.1</span>
               </div>
             </div>
           </div>
@@ -317,7 +318,7 @@
         <div class="shortcut-row"><kbd>?</kbd><span>随时呼出此快捷键帮助</span></div>
       </div>
       <div class="dialog-actions">
-        <span class="dialog-version-tag">MarkDock v2.4.0</span>
+        <span class="dialog-version-tag">MarkDock v2.4.1</span>
         <span class="dialog-spacer"></span>
         <button class="button button-primary" type="button" data-close-dialog="shortcutsDialog">知道了</button>
       </div>
@@ -416,10 +417,6 @@
             <span class="wallpaper-mode-swatch wallpaper-swatch-gradient" aria-hidden="true"></span>
             <span>流光渐变</span>
           </button>
-          <button class="wallpaper-mode-button" type="button" data-wallpaper-choice="solid" aria-pressed="false">
-            <span class="wallpaper-mode-swatch wallpaper-swatch-solid" aria-hidden="true"></span>
-            <span>质感纯色</span>
-          </button>
           <button class="wallpaper-mode-button" type="button" data-wallpaper-choice="custom" aria-pressed="false">
             <span class="wallpaper-mode-swatch wallpaper-swatch-image" aria-hidden="true"></span>
             <span>精选壁纸</span>
@@ -440,19 +437,7 @@
             </div>
           </div>
 
-          <!-- 2. 纯色快捷色卡 -->
-          <div class="wallpaper-solid-section" id="wallpaperSolidOptions" hidden>
-            <div class="wallpaper-solid-heading">
-              <span class="wallpaper-option-label">精选色卡</span>
-              <div class="wallpaper-custom-picker-wrap">
-                <label for="wallpaperSolidColor" class="wallpaper-picker-label">自定义取色</label>
-                <input id="wallpaperSolidColor" class="wallpaper-color-input" type="color" value="#17191d" aria-label="选择纯色背景" />
-              </div>
-            </div>
-            <div class="wallpaper-solid-swatches" id="wallpaperSolidSwatches" role="group" aria-label="常用纯色色卡"></div>
-          </div>
-
-          <!-- 3. 图片与壁纸画廊 (精选/必应/上传) -->
+          <!-- 2. 图片与壁纸画廊 (精选/必应/上传) -->
           <div class="wallpaper-image-section" id="wallpaperImageOptions" hidden>
             <div class="wallpaper-source-tabs" role="tablist" aria-label="壁纸来源">
               <button class="wallpaper-source-tab is-active" type="button" data-image-source="curated" role="tab" aria-selected="true">精选画廊</button>
@@ -486,7 +471,7 @@
                 <div class="bing-preview-img" id="bingPreviewImg"></div>
                 <div class="bing-info">
                   <strong id="bingTitle">今日必应壁纸</strong>
-                  <span id="bingCopyright" class="bing-copyright">每日自动更新微软 4K/1080P 风景大片</span>
+                  <span id="bingCopyright" class="bing-copyright">选择后从 Bing 获取今日壁纸。</span>
                 </div>
               </div>
               <button class="button button-sm button-secondary" id="refreshBingButton" type="button">🔄 刷新今日壁纸</button>
@@ -552,6 +537,28 @@
         <span class="appearance-save-note">选择后立即生效</span>
         <span class="dialog-spacer"></span>
         <button class="button button-primary" type="button" data-close-dialog="appearanceDialog">完成</button>
+      </div>
+    </dialog>
+
+    <dialog id="dataUseDisclosureDialog" class="bookmark-dialog data-use-dialog" aria-labelledby="dataUseDisclosureTitle">
+      <div class="dialog-heading">
+        <div>
+          <p class="eyebrow">隐私与数据</p>
+          <h2 id="dataUseDisclosureTitle">MarkDock 如何使用书签数据</h2>
+        </div>
+      </div>
+      <p class="data-use-intro">继续使用前，请了解扩展会如何处理你的书签和相关数据。</p>
+      <ul class="data-use-list">
+        <li>读取书签标题、网址和文件夹，用于展示、搜索、整理及按你的操作更新 Chrome 书签；你创建或导入到 MarkDock 的本地书签也保存在本机。主动使用快捷键或右键菜单快速保存时，会读取当前标签页标题和网址。</li>
+        <li>收藏状态、自定义图标和外观偏好保存在本机；Chrome Sync 会同步界面偏好与文件夹展开状态，展开状态包含相应的 Chrome 书签文件夹 ID。</li>
+        <li>显示书签卡片时会自动向对应网站请求高清图标，该网站会收到图标请求连接信息。失效链接检查只在你启动并授权后请求书签网址；Bing 壁纸只在你选用后申请 Bing 网站权限。</li>
+        <li>MarkDock 不会把书签列表发送给开发者，也不使用广告或分析服务。</li>
+      </ul>
+      <p class="data-use-policy">详细处理方式见 <a href="./privacy.html" target="_blank" rel="noopener noreferrer">隐私政策</a>。</p>
+      <p class="appearance-save-status" id="dataUseConsentStatus" role="status" aria-live="polite" hidden></p>
+      <div class="dialog-actions">
+        <span class="dialog-spacer"></span>
+        <button class="button button-primary" id="acceptDataUseButton" type="button">同意并继续</button>
       </div>
     </dialog>
 

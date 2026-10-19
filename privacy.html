@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f5f6f8" />
+    <title>MarkDock 隐私政策</title>
+    <style>
+      :root { color-scheme: light; font: 16px/1.7 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #252833; background: #f5f6f8; }
+      body { margin: 0; padding: 40px 20px; }
+      main { max-width: 760px; margin: 0 auto; padding: 36px clamp(22px, 6vw, 56px); border: 1px solid #e0e3e8; border-radius: 20px; background: #fff; box-shadow: 0 16px 48px rgba(27, 35, 49, .08); }
+      h1 { margin: 0 0 4px; font-size: clamp(26px, 4vw, 34px); line-height: 1.25; }
+      h2 { margin: 30px 0 8px; font-size: 18px; }
+      p, li { color: #505664; }
+      ul { padding-left: 22px; }
+      .meta { margin-top: 0; color: #737987; font-size: 14px; }
+      .contact { padding: 14px 16px; border-radius: 12px; background: #f1f2f5; }
+      .limited-use { padding: 16px; border-left: 3px solid #8061ba; background: #f7f4fb; }
+      @media (max-width: 600px) { body { padding: 16px 10px; } main { border-radius: 14px; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>MarkDock 书签坞隐私政策</h1>
+      <p class="meta">适用于 Chrome 扩展和本地网页模式 · 生效日期：2026-10-19</p>
+
+      <h2>开发者与联系信息</h2>
+      <p class="contact">开发者名称和隐私联系邮箱须在发布 Chrome 应用商店前填写，并在公开发布的政策页面中提供。</p>
+
+      <h2>处理的数据</h2>
+      <p>MarkDock 会在用户设备上读取 Chrome 书签的标题、网址、文件夹和排序信息，用于展示、搜索、分类、编辑、移动、删除、导入和导出书签。用户主动使用快捷键或右键菜单快速保存当前页面时，扩展会读取当前标签页的标题和网址来创建书签。用户在 MarkDock 创建或导入的本地书签保存在本机。收藏状态、图标覆盖、外观设置和其他本地工作台偏好也保存在浏览器本地存储中。自定义壁纸经过压缩后保存在本机 IndexedDB。</p>
+      <p>MarkDock 不会把书签库发送给开发者，也不运行开发者自有的分析、广告或书签中转服务。Chrome 可能根据用户自己的浏览器设置同步 Chrome 书签。</p>
+
+      <h2>Chrome Sync</h2>
+      <p>如果 Chrome Sync 可用，扩展会使用 <code>chrome.storage.sync</code> 同步导航树展开状态、视图、排序方式、卡片密度和侧栏折叠状态。为在其他设备还原导航树，展开状态中会包含对应的 Chrome 书签文件夹 ID。书签标题、网址、文件夹名称、搜索内容和自定义壁纸不会写入 Chrome Sync。</p>
+
+      <h2>网络请求</h2>
+      <ul>
+        <li><strong>高清站点图标：</strong>显示书签卡片时，扩展会自动尝试从书签对应网站读取常见图标地址，以提供高清图标。请求不携带页面 Referer；网站仍可看到连接并按其规则记录请求。</li>
+        <li><strong>失效链接检查：</strong>仅当用户主动启动检查后，扩展才请求相应书签网址。扩展先向 Chrome 申请所需网站权限，使用不携带 Cookie 的请求，并且不跟随重定向到的其他主机。目标网站可能记录 IP 地址、请求时间和网址。</li>
+        <li><strong>Bing 每日壁纸：</strong>仅当用户选择并启用该来源时，扩展才会申请 Bing 网站权限，并在已获授权时向 <code>cn.bing.com</code> 请求壁纸信息和图片，不会把书签列表或搜索内容发送给 Bing。</li>
+        <li><strong>本地网页模式：</strong>Python 服务只绑定 <code>127.0.0.1</code>。图标和链接检查请求由用户设备直接发出，不经过开发者服务器。</li>
+      </ul>
+
+      <h2>数据保留与控制</h2>
+      <p>本地创建或导入的书签、收藏状态、图标缓存和外观设置会保存在当前浏览器配置中，直到用户清除扩展数据或移除扩展。Chrome 原生书签仍由 Chrome 管理；Chrome Sync 偏好由 Chrome 账号同步功能管理。用户可在扩展管理页面撤销可选网站权限、关闭对应网络功能或移除扩展。目标网站和 Bing 记录的网络日志受其各自隐私政策约束。</p>
+
+      <h2>儿童隐私</h2>
+      <p>MarkDock 不是面向儿童的产品，不会有意收集儿童的个人信息。</p>
+
+      <h2>Chrome Web Store Limited Use 声明</h2>
+      <p class="limited-use">The use of information received from Google APIs will adhere to the Chrome Web Store User Data Policy, including the Limited Use requirements. MarkDock uses bookmark data only to provide bookmark management features requested by the user. It may send individual favicon or link requests directly to the corresponding sites to provide those features, but it does not upload or share the complete bookmark library with the developer or other parties. MarkDock does not sell user data or use it for advertising.</p>
+
+      <h2>联系开发者</h2>
+      <p class="contact">隐私相关问题请联系：发布前填写的隐私联系邮箱。</p>
+    </main>
+  </body>
+</html>

@@ -1,7 +1,7 @@
 /**
  * MarkDock 外观与背景系统 2.2
- * 支持双主题、6 款多色空间渐变、12 款质感纯色色卡、精选矢量艺术壁纸、
- * 每日必应 4K 壁纸自动同步、自定义图片存储，以及微质感点阵网格与卡片毛玻璃通透质感。
+ * 支持双主题、6 款多色空间渐变、精选矢量艺术壁纸、
+ * 每日必应壁纸按需同步、自定义图片存储，以及微质感点阵网格与卡片毛玻璃通透质感。
  */
 (() => {
   "use strict";
@@ -9,12 +9,15 @@
   const SETTINGS_KEY = "qidian-skin-settings-v2";
   const THEME_KEY = "qidian-theme-v1";
   const LEGACY_APPEARANCE_KEY = "qidian-appearance-v1";
+  const USER_DATA_CONSENT_KEY = "markdock-data-use-consent-v1";
   const BING_CACHE_KEY = "markdock-bing-wallpaper-cache";
+  const BING_ORIGIN_PATTERN = "https://*.bing.com/*";
   const root = document.documentElement;
+  const EXTENSION_CONTEXT = location.protocol === "chrome-extension:";
 
   const bootstrapWallpaperStyle = root.style.getPropertyValue("--custom-wallpaper-url");
   const themes = new Set(["dark", "light"]);
-  const modes = new Set(["diffuse", "gradient", "solid", "custom"]);
+  const modes = new Set(["diffuse", "gradient", "custom"]);
 
   const gradients = {
     slate: {
@@ -70,24 +73,6 @@
     }
   };
 
-  const SOLID_SWATCHES_DARK = [
-    { color: "#101113", name: "深空黑" },
-    { color: "#18191c", name: "石墨炭" },
-    { color: "#0f172a", name: "星夜蓝" },
-    { color: "#062326", name: "冷墨青" },
-    { color: "#171424", name: "暗夜紫" },
-    { color: "#1a1412", name: "浓缩咖啡" }
-  ];
-
-  const SOLID_SWATCHES_LIGHT = [
-    { color: "#f8f9fa", name: "象牙白" },
-    { color: "#f3f4f6", name: "极简雪灰" },
-    { color: "#f6f4ee", name: "温润燕麦" },
-    { color: "#eef4f9", name: "冰川淡蓝" },
-    { color: "#eef6f3", name: "薄荷青灰" },
-    { color: "#fbf0f3", name: "晚霞雾粉" }
-  ];
-
   const lightSkins = new Set(["ivory", "mist", "rose", "light", "white"]);
   const darkSkins = new Set(["nebula", "abyss", "aurora", "ember", "midnight", "dark", "black"]);
 
@@ -97,8 +82,6 @@
     imageSubMode: "curated",
     curatedId: "aurora",
     gradient: "slate",
-    solid: "#101113",
-    solidCustomized: false,
     blur: 10,
     overlay: 24,
     textureMode: "none",
@@ -154,18 +137,13 @@
     if (Object.hasOwn(CURATED_WALLPAPERS, saved?.curatedId)) state.curatedId = saved.curatedId;
     if (Object.hasOwn(gradients, saved?.gradient)) state.gradient = saved.gradient;
 
-    if (typeof saved?.solid === "string" && /^#[\da-f]{6}$/i.test(saved.solid)) {
-      state.solid = saved.solid;
-      state.solidCustomized = saved?.solidCustomized === true;
-    }
-
     state.blur = clampNumber(saved?.blur, 0, 28, state.blur);
     state.overlay = clampNumber(saved?.overlay, 0, 75, state.overlay);
     state.textureMode = saved?.textureMode === "dots" ? "dots" : "none";
     state.cardGlass = saved?.cardGlass === true;
 
     if (persistedWallpaperUrl(saved?.cachedWallpaperUrl)) state.cachedWallpaperUrl = saved.cachedWallpaperUrl;
-    if (typeof saved?.cachedBingUrl === "string") state.cachedBingUrl = saved.cachedBingUrl;
+    state.cachedBingUrl = bingImageUrl(saved?.cachedBingUrl);
     if (typeof saved?.cachedBingTitle === "string") state.cachedBingTitle = saved.cachedBingTitle;
     if (typeof saved?.cachedBingCopyright === "string") state.cachedBingCopyright = saved.cachedBingCopyright;
     if (typeof saved?.cachedBingDate === "string") state.cachedBingDate = saved.cachedBingDate;
@@ -195,11 +173,11 @@
       }
     }
 
-    if (!state.solidCustomized) state.solid = state.theme === "light" ? "#f8f9fa" : "#101113";
     return state;
   }
 
   let state = readSettings();
+  let bingHostAccessGranted = !EXTENSION_CONTEXT;
   let customImageObjectUrl = "";
   let imageStorePromise = null;
   let wallpaperUploadInProgress = false;
@@ -282,7 +260,6 @@
     root.style.setProperty("--wallpaper-blur", `${state.blur}px`);
     const isImageMode = state.wallpaperMode === "custom";
     root.style.setProperty("--wallpaper-overlay", String(isImageMode ? state.overlay / 100 : 0));
-    root.style.setProperty("--wallpaper-solid", state.solid);
 
     if (state.wallpaperMode === "gradient") {
       root.style.setProperty("--wallpaper-gradient", (gradients[state.gradient] || gradients.slate)[state.theme]);
@@ -296,9 +273,9 @@
         const item = CURATED_WALLPAPERS[state.curatedId] || CURATED_WALLPAPERS.aurora;
         imageUrl = item[state.theme] || item.dark || item.url;
       } else if (state.imageSubMode === "bing") {
-        imageUrl = state.cachedBingUrl;
+        imageUrl = bingHostAccessGranted ? state.cachedBingUrl : "";
       } else if (state.imageSubMode === "upload") {
-        imageUrl = customImageObjectUrl || state.cachedWallpaperUrl;
+        imageUrl = hasUserDataConsent() ? (customImageObjectUrl || state.cachedWallpaperUrl) : "";
       }
     }
 
@@ -315,7 +292,6 @@
   function applyTheme(theme, persist = true) {
     if (!themes.has(theme)) return state.theme;
     state.theme = theme;
-    if (!state.solidCustomized) state.solid = theme === "light" ? "#f8f9fa" : "#101113";
     const skin = skinForTheme(theme);
     root.dataset.theme = theme;
     root.dataset.skin = skin.id;
@@ -360,8 +336,62 @@
     });
   }
 
-  async function fetchBingDailyWallpaper(force = false) {
-    const today = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  function requestBingHostAccess(requestPermission) {
+    if (!EXTENSION_CONTEXT || !globalThis.chrome?.permissions) return Promise.resolve(!EXTENSION_CONTEXT);
+    return new Promise((resolve) => {
+      const method = requestPermission ? chrome.permissions.request : chrome.permissions.contains;
+      try {
+        // On button clicks, request() is invoked synchronously in the user
+        // gesture before this promise yields. Startup only checks existing access.
+        method.call(chrome.permissions, { origins: [BING_ORIGIN_PATTERN] }, (granted) => {
+          void chrome.runtime?.lastError;
+          resolve(Boolean(granted));
+        });
+      } catch {
+        resolve(false);
+      }
+    });
+  }
+
+  function bingImageUrl(value) {
+    if (typeof value !== "string" || !value.trim()) return "";
+    try {
+      const parsed = new URL(value, "https://cn.bing.com");
+      if (parsed.protocol !== "https:"
+        || (parsed.hostname !== "bing.com" && !parsed.hostname.endsWith(".bing.com"))) return "";
+      return parsed.href;
+    } catch {
+      return "";
+    }
+  }
+
+  function hasUserDataConsent() {
+    if (!EXTENSION_CONTEXT) return true;
+    try { return localStorage.getItem(USER_DATA_CONSENT_KEY) === "accepted"; }
+    catch { return false; }
+  }
+
+  function setBingHostAccess(granted) {
+    bingHostAccessGranted = Boolean(granted) || !EXTENSION_CONTEXT;
+    if (state.wallpaperMode === "custom" && state.imageSubMode === "bing") applyWallpaper();
+    updateWallpaperUI();
+  }
+
+  async function fetchBingDailyWallpaper(force = false, requestPermission = false) {
+    const now = new Date();
+    const today = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
+    const hasBingAccess = await requestBingHostAccess(requestPermission);
+    setBingHostAccess(hasBingAccess);
+    if (!hasBingAccess) {
+      const bingInfo = document.querySelector("#bingCopyright");
+      if (bingInfo) {
+        bingInfo.textContent = requestPermission
+          ? "未获得 Bing 访问权限；点击刷新按钮后可重新授权。"
+          : "点击刷新今日壁纸并授权访问 Bing 后即可使用。";
+      }
+      return null;
+    }
+
     if (!force && state.cachedBingUrl && state.cachedBingDate === today) {
       return {
         url: state.cachedBingUrl,
@@ -375,12 +405,18 @@
       const cachedRaw = localStorage.getItem(BING_CACHE_KEY);
       if (!force && cachedRaw) {
         const cached = JSON.parse(cachedRaw);
-        if (cached && (cached.date === today || cached.url)) {
-          state.cachedBingUrl = cached.url;
+        const cachedUrl = bingImageUrl(cached?.url);
+        if (cached && cached.date === today && cachedUrl) {
+          state.cachedBingUrl = cachedUrl;
           state.cachedBingTitle = cached.title || "今日必应壁纸";
           state.cachedBingCopyright = cached.copyright || "";
           state.cachedBingDate = cached.date || today;
-          return cached;
+          const result = { ...cached, url: cachedUrl };
+          if (state.wallpaperMode === "custom" && state.imageSubMode === "bing") {
+            applyWallpaper();
+            updateWallpaperUI();
+          }
+          return result;
         }
       }
     } catch {}
@@ -388,92 +424,51 @@
     const bingInfo = document.querySelector("#bingCopyright");
     if (bingInfo) bingInfo.textContent = "正在同步今日必应高清壁纸…";
 
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10_000);
     try {
-      const res = await fetch("https://bing.biturl.top/?resolution=1920&format=json&index=0&mkt=zh-CN", { cache: "no-cache" });
+      const res = await fetch("https://cn.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1&mkt=zh-CN", {
+        cache: "no-store",
+        credentials: "omit",
+        referrerPolicy: "no-referrer",
+        signal: controller.signal
+      });
       if (!res.ok) throw new Error("HTTP " + res.status);
       const data = await res.json();
-      if (data && data.url) {
-        const result = {
-          date: today,
-          url: data.url,
-          title: data.copyright ? data.copyright.split("(")[0].trim() : "今日必应高清壁纸",
-          copyright: data.copyright || ""
-        };
-        state.cachedBingUrl = result.url;
-        state.cachedBingTitle = result.title;
-        state.cachedBingCopyright = result.copyright;
-        state.cachedBingDate = result.date;
-        try { localStorage.setItem(BING_CACHE_KEY, JSON.stringify(result)); } catch {}
-        saveSettings();
-        if (state.wallpaperMode === "custom" && state.imageSubMode === "bing") {
-          applyWallpaper();
-        }
-        updateWallpaperUI();
-        return result;
-      }
-    } catch (e) {
-      // Fallback to cn.bing.com
-      try {
-        const res2 = await fetch("https://cn.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1&nc=1612409408888&pid=hp");
-        if (res2.ok) {
-          const data2 = await res2.json();
-          if (data2?.images?.[0]) {
-            const img = data2.images[0];
-            const fullUrl = img.url.startsWith("http") ? img.url : `https://cn.bing.com${img.url}`;
-            const result = {
-              date: today,
-              url: fullUrl,
-              title: img.title || (img.copyright ? img.copyright.split("(")[0].trim() : "今日必应壁纸"),
-              copyright: img.copyright || ""
-            };
-            state.cachedBingUrl = result.url;
-            state.cachedBingTitle = result.title;
-            state.cachedBingCopyright = result.copyright;
-            state.cachedBingDate = result.date;
-            try { localStorage.setItem(BING_CACHE_KEY, JSON.stringify(result)); } catch {}
-            saveSettings();
-            if (state.wallpaperMode === "custom" && state.imageSubMode === "bing") {
-              applyWallpaper();
-            }
-            updateWallpaperUI();
-            return result;
-          }
-        }
-      } catch {}
-    }
-
-    if (state.cachedBingUrl) {
-      updateWallpaperUI();
-      return { url: state.cachedBingUrl, title: state.cachedBingTitle, copyright: state.cachedBingCopyright };
-    }
-    return null;
-  }
-
-  function renderSolidSwatches() {
-    const container = document.querySelector("#wallpaperSolidSwatches");
-    if (!container) return;
-    const swatches = state.theme === "light" ? SOLID_SWATCHES_LIGHT : SOLID_SWATCHES_DARK;
-    container.innerHTML = "";
-    swatches.forEach((item) => {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "wallpaper-solid-swatch-btn";
-      btn.dataset.swatchColor = item.color;
-      btn.title = item.name;
-      btn.style.backgroundColor = item.color;
-      const isSelected = state.solid.toLowerCase() === item.color.toLowerCase();
-      btn.classList.toggle("is-active", isSelected);
-      btn.setAttribute("aria-label", item.name);
-      btn.addEventListener("click", () => {
-        state.solid = item.color;
-        state.solidCustomized = true;
-        state.wallpaperMode = "solid";
-        saveSettings();
+      const image = data?.images?.[0];
+      const imageUrl = bingImageUrl(image?.url);
+      if (!image || !imageUrl) throw new Error("必应没有返回有效的高清图片");
+      const result = {
+        date: today,
+        url: imageUrl,
+        title: image.title || (image.copyright ? image.copyright.split("(")[0].trim() : "今日必应壁纸"),
+        copyright: image.copyright || ""
+      };
+      state.cachedBingUrl = result.url;
+      state.cachedBingTitle = result.title;
+      state.cachedBingCopyright = result.copyright;
+      state.cachedBingDate = result.date;
+      try { localStorage.setItem(BING_CACHE_KEY, JSON.stringify(result)); } catch {}
+      saveSettings();
+      if (state.wallpaperMode === "custom" && state.imageSubMode === "bing") {
         applyWallpaper();
+      }
+      updateWallpaperUI();
+      return result;
+    } catch (error) {
+      if (bingInfo) {
+        bingInfo.textContent = controller.signal.aborted
+          ? "获取今日壁纸超时，请检查网络后重试。"
+          : `获取今日壁纸失败${error?.message ? `：${error.message}` : "，请检查网络后重试。"}`;
+      }
+      if (state.cachedBingUrl) {
         updateWallpaperUI();
-      });
-      container.appendChild(btn);
-    });
+        return { url: state.cachedBingUrl, title: state.cachedBingTitle, copyright: state.cachedBingCopyright };
+      }
+      return null;
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 
   function updateWallpaperUI() {
@@ -491,12 +486,7 @@
       button.setAttribute("aria-pressed", String(selected));
     });
 
-    // 3. 纯色快捷卡
-    renderSolidSwatches();
-    const solidColor = document.querySelector("#wallpaperSolidColor");
-    if (solidColor) solidColor.value = state.solid;
-
-    // 4. 图片来源 Tab 与各子区域切换
+    // 3. 图片来源 Tab 与各子区域切换
     document.querySelectorAll("[data-image-source]").forEach((tab) => {
       const selected = tab.dataset.imageSource === state.imageSubMode;
       tab.classList.toggle("is-active", selected);
@@ -530,8 +520,10 @@
     const bingPreviewImg = document.querySelector("#bingPreviewImg");
     const bingTitle = document.querySelector("#bingTitle");
     const bingCopyright = document.querySelector("#bingCopyright");
-    if (bingPreviewImg && state.cachedBingUrl) {
-      bingPreviewImg.style.backgroundImage = `url("${state.cachedBingUrl}")`;
+    if (bingPreviewImg) {
+      bingPreviewImg.style.backgroundImage = bingHostAccessGranted && state.cachedBingUrl
+        ? safeWallpaperUrl(state.cachedBingUrl)
+        : "none";
     }
     if (bingTitle && state.cachedBingTitle) bingTitle.textContent = state.cachedBingTitle;
     if (bingCopyright && state.cachedBingCopyright) bingCopyright.textContent = state.cachedBingCopyright;
@@ -540,24 +532,22 @@
     const customThumb = document.querySelector("#customWallpaperThumb");
     const removeBtn = document.querySelector("#removeWallpaperButton");
     const uploadBtn = document.querySelector("#uploadWallpaperButton");
-    const hasCustomImg = Boolean(customImageObjectUrl || state.cachedWallpaperUrl);
+    const hasCustomImg = hasUserDataConsent() && Boolean(customImageObjectUrl || state.cachedWallpaperUrl);
     if (customThumb) {
       customThumb.style.backgroundImage = hasCustomImg ? safeWallpaperUrl(customImageObjectUrl || state.cachedWallpaperUrl) : "none";
     }
     if (removeBtn) removeBtn.hidden = !hasCustomImg;
     if (uploadBtn) uploadBtn.textContent = hasCustomImg ? "更换图片" : "选择本地图片";
 
-    // 5. 区域显示/隐藏
+    // 4. 区域显示/隐藏
     const options = document.querySelector("#wallpaperOptions");
     const gradientOptions = document.querySelector("#wallpaperGradientOptions");
-    const solidOptions = document.querySelector("#wallpaperSolidOptions");
     const imageOptions = document.querySelector("#wallpaperImageOptions");
     const adjustments = document.querySelector("#wallpaperAdjustments");
 
     const hasOptions = state.wallpaperMode !== "diffuse";
     if (options) options.hidden = !hasOptions;
     if (gradientOptions) gradientOptions.hidden = state.wallpaperMode !== "gradient";
-    if (solidOptions) solidOptions.hidden = state.wallpaperMode !== "solid";
     if (imageOptions) imageOptions.hidden = !isImageMode;
     if (adjustments) adjustments.hidden = !isImageMode;
 
@@ -571,7 +561,7 @@
     if (overlayRange) overlayRange.value = String(state.overlay);
     if (overlayValue) overlayValue.value = `${state.overlay}%`;
 
-    // 6. 高级质感开关
+    // 5. 高级质感开关
     const dotGridToggle = document.querySelector("#toggleDotGrid");
     if (dotGridToggle) dotGridToggle.setAttribute("aria-checked", String(state.textureMode === "dots"));
 
@@ -641,8 +631,8 @@
         saveSettings();
         applyWallpaper();
         updateWallpaperUI();
-        if (mode === "custom" && state.imageSubMode === "bing" && !state.cachedBingUrl) {
-          fetchBingDailyWallpaper();
+        if (mode === "custom" && state.imageSubMode === "bing") {
+          fetchBingDailyWallpaper(false, true);
         }
       });
     });
@@ -659,16 +649,6 @@
       });
     });
 
-    // 纯色自定义取色器
-    document.querySelector("#wallpaperSolidColor")?.addEventListener("input", (event) => {
-      state.solid = event.target.value;
-      state.solidCustomized = true;
-      state.wallpaperMode = "solid";
-      saveSettings();
-      applyWallpaper();
-      updateWallpaperUI();
-    });
-
     // 壁纸来源 Tab
     document.querySelectorAll("[data-image-source]").forEach((tab) => {
       tab.addEventListener("click", () => {
@@ -678,8 +658,8 @@
         saveSettings();
         applyWallpaper();
         updateWallpaperUI();
-        if (source === "bing" && !state.cachedBingUrl) {
-          fetchBingDailyWallpaper();
+        if (source === "bing") {
+          fetchBingDailyWallpaper(false, true);
         }
       });
     });
@@ -700,9 +680,12 @@
     refreshBingBtn?.addEventListener("click", async () => {
       refreshBingBtn.disabled = true;
       refreshBingBtn.textContent = "正在获取…";
-      await fetchBingDailyWallpaper(true);
-      refreshBingBtn.disabled = false;
-      refreshBingBtn.textContent = "🔄 刷新今日壁纸";
+      try {
+        await fetchBingDailyWallpaper(true, true);
+      } finally {
+        refreshBingBtn.disabled = false;
+        refreshBingBtn.textContent = "🔄 刷新今日壁纸";
+      }
     });
 
     // 自定义上传
@@ -850,10 +833,12 @@
     },
     toggleTheme: () => applyTheme(state.theme === "dark" ? "light" : "dark"),
     setWallpaperMode: (mode) => {
+      if (!modes.has(mode)) return state.wallpaperMode;
       state.wallpaperMode = mode;
       saveSettings();
       applyWallpaper();
       updateWallpaperUI();
+      return state.wallpaperMode;
     },
     setCuratedId: (id) => {
       if (CURATED_WALLPAPERS[id]) {
@@ -868,9 +853,21 @@
   };
 
   applyTheme(state.theme, false);
-  loadStoredCustomImage();
+  if (hasUserDataConsent()) loadStoredCustomImage();
 
-  if (state.wallpaperMode === "custom" && state.imageSubMode === "bing" && !state.cachedBingUrl) {
+  if (EXTENSION_CONTEXT && chrome?.permissions?.onRemoved) {
+    chrome.permissions.onRemoved.addListener((permissions) => {
+      if (permissions.origins?.includes(BING_ORIGIN_PATTERN)) setBingHostAccess(false);
+    });
+  }
+
+  if (EXTENSION_CONTEXT && chrome?.permissions?.onAdded) {
+    chrome.permissions.onAdded.addListener((permissions) => {
+      if (permissions.origins?.includes(BING_ORIGIN_PATTERN)) setBingHostAccess(true);
+    });
+  }
+
+  if (hasUserDataConsent() && state.wallpaperMode === "custom" && state.imageSubMode === "bing") {
     fetchBingDailyWallpaper();
   }
 
@@ -893,15 +890,12 @@
         if (["curated", "bing", "upload"].includes(saved.imageSubMode)) state.imageSubMode = saved.imageSubMode;
         if (Object.hasOwn(CURATED_WALLPAPERS, saved.curatedId)) state.curatedId = saved.curatedId;
         if (Object.hasOwn(gradients, saved.gradient)) state.gradient = saved.gradient;
-        if (typeof saved.solid === "string" && /^#[\da-f]{6}$/i.test(saved.solid)) state.solid = saved.solid;
-        state.solidCustomized = saved.solidCustomized === true;
         state.blur = clampNumber(saved.blur, 0, 28, state.blur);
         state.overlay = clampNumber(saved.overlay, 0, 75, state.overlay);
         state.textureMode = saved.textureMode === "dots" ? "dots" : "none";
         state.cardGlass = saved.cardGlass === true;
         if (typeof saved.cachedWallpaperUrl === "string") state.cachedWallpaperUrl = saved.cachedWallpaperUrl;
-        if (typeof saved.cachedBingUrl === "string") state.cachedBingUrl = saved.cachedBingUrl;
-        if (!state.solidCustomized) state.solid = state.theme === "light" ? "#f8f9fa" : "#101113";
+        state.cachedBingUrl = bingImageUrl(saved.cachedBingUrl);
         updateAppearanceSaveStatus("");
         applyTheme(state.theme, false);
         if (state.wallpaperMode === "custom" && state.imageSubMode === "upload") loadStoredCustomImage();

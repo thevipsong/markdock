@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
   "name": "MarkDock 书签坞",
-  "version": "2.4.0",
+  "version": "2.4.1",
   "minimum_chrome_version": "116",
-  "description": "极简现代网格书签工作台，提供暗黑与白色双主题、高清站点图标匹配、拖拽整理和失效链接检查。",
+  "description": "管理浏览器书签，支持快速搜索、分类整理、导入导出、双主题外观和按需链接检查。",
   "permissions": [
     "bookmarks",
     "favicon",
@@ -13,10 +13,15 @@
   ],
   "optional_host_permissions": [
     "http://*/*",
-    "https://*/*"
+    "https://*/*",
+    "https://*.bing.com/*"
   ],
   "action": {
-    "default_title": "打开 MarkDock 书签坞"
+    "default_title": "打开 MarkDock 书签坞",
+    "default_icon": {
+      "16": "extension-icon-16.png",
+      "32": "extension-icon-32.png"
+    }
   },
   "commands": {
     "_execute_action": {
@@ -29,7 +34,7 @@
     "quick-bookmark-current-page": {
       "suggested_key": {
         "default": "Alt+Shift+D",
-        "mac": "Command+Shift+D"
+        "mac": "Command+Shift+K"
       },
       "description": "将当前页面快速保存到书签栏"
     }

@@ -8,7 +8,13 @@
   const SETTINGS_KEY = "qidian-skin-settings-v2";
   const THEME_KEY = "qidian-theme-v1";
   const LEGACY_APPEARANCE_KEY = "qidian-appearance-v1";
+  const USER_DATA_CONSENT_KEY = "markdock-data-use-consent-v1";
   const root = document.documentElement;
+  const mayReadLocalUserAssets = location.protocol !== "chrome-extension:"
+    || (() => {
+      try { return localStorage.getItem(USER_DATA_CONSENT_KEY) === "accepted"; }
+      catch { return false; }
+    })();
   const initialWallpaperGeneration = root.dataset.wallpaperGeneration || "0";
   const lightSkins = new Set(["ivory", "mist", "rose", "light", "white"]);
   const darkSkins = new Set(["nebula", "abyss", "aurora", "ember", "midnight", "dark", "black"]);
@@ -76,16 +82,11 @@
   theme = theme === "light" ? "light" : "dark";
 
   const oldMode = settings.wallpaperMode || (legacySettings.preset === "image" ? "custom" : "diffuse");
-  const allowedModes = new Set(["diffuse", "gradient", "solid", "custom"]);
+  const allowedModes = new Set(["diffuse", "gradient", "custom"]);
   const wallpaperMode = oldMode === "bing"
     ? "custom"
     : (allowedModes.has(oldMode) ? oldMode : "diffuse");
   const gradient = Object.hasOwn(gradients, settings.gradient) ? settings.gradient : "slate";
-  const solid = settings.solidCustomized === true
-    && typeof settings.solid === "string"
-    && /^#[\da-f]{6}$/i.test(settings.solid)
-    ? settings.solid
-    : (theme === "dark" ? "#101113" : "#f8f9fa");
   const savedBlur = Number.isFinite(settings.blur) ? settings.blur : legacySettings.blur;
   const savedOverlay = Number.isFinite(settings.overlay) ? settings.overlay : legacySettings.overlay;
   const blur = Number.isFinite(savedBlur) ? Math.max(0, Math.min(28, savedBlur)) : 10;
@@ -104,7 +105,6 @@
   root.style.setProperty("--wallpaper-blur", `${blur}px`);
   const imageMode = wallpaperMode === "custom";
   root.style.setProperty("--wallpaper-overlay", String(imageMode ? overlay / 100 : 0));
-  root.style.setProperty("--wallpaper-solid", solid);
   if (wallpaperMode === "gradient") root.style.setProperty("--wallpaper-gradient", gradients[gradient][theme]);
 
   if (theme === "dark" || theme === "light") {
@@ -118,40 +118,43 @@
       const file = typeof item === "string" ? item : (item[theme] || item.dark);
       root.style.setProperty("--custom-wallpaper-url", `url(${JSON.stringify(file)})`);
     } else if (subMode === "bing") {
-      const bingUrl = settings.cachedBingUrl;
-      if (typeof bingUrl === "string" && /^(https?:|data:image\/)/i.test(bingUrl)) {
-        root.style.setProperty("--custom-wallpaper-url", `url(${JSON.stringify(bingUrl)})`);
-      }
+      // Bing images are restored by appearance.js after it verifies or requests
+      // the optional host permission. Avoid an unauthorized remote image request
+      // during the pre-render theme bootstrap.
     } else if (subMode === "upload") {
-      if (typeof settings.cachedWallpaperUrl === "string" && /^(https?:|data:image\/)/i.test(settings.cachedWallpaperUrl)) {
+      if (mayReadLocalUserAssets
+        && typeof settings.cachedWallpaperUrl === "string"
+        && /^(https?:|data:image\/)/i.test(settings.cachedWallpaperUrl)) {
         root.style.setProperty("--custom-wallpaper-url", `url(${JSON.stringify(settings.cachedWallpaperUrl)})`);
       }
-      try {
-        const request = indexedDB.open("qidian-appearance-assets", 1);
-        request.onupgradeneeded = () => {
-          if (!request.result.objectStoreNames.contains("images")) request.result.createObjectStore("images");
-        };
-        request.onsuccess = () => {
-          const db = request.result;
-          try {
-            const transaction = db.transaction("images", "readonly");
-            const imageRequest = transaction.objectStore("images").get("background");
-            imageRequest.onsuccess = () => {
-              if (root.dataset.wallpaperMode !== "custom"
-                  || root.dataset.wallpaperGeneration !== initialWallpaperGeneration
-                  || !(imageRequest.result instanceof Blob)) return;
-              const imageUrl = URL.createObjectURL(imageRequest.result);
-              bootstrapWallpaperUrl = imageUrl;
-              root.style.setProperty("--custom-wallpaper-url", `url(${JSON.stringify(imageUrl)})`);
-            };
-            transaction.oncomplete = () => db.close();
-            transaction.onerror = () => db.close();
-          } catch {
-            db.close();
-          }
-        };
-      } catch {
-        // Safe fallback
+      if (mayReadLocalUserAssets) {
+        try {
+          const request = indexedDB.open("qidian-appearance-assets", 1);
+          request.onupgradeneeded = () => {
+            if (!request.result.objectStoreNames.contains("images")) request.result.createObjectStore("images");
+          };
+          request.onsuccess = () => {
+            const db = request.result;
+            try {
+              const transaction = db.transaction("images", "readonly");
+              const imageRequest = transaction.objectStore("images").get("background");
+              imageRequest.onsuccess = () => {
+                if (root.dataset.wallpaperMode !== "custom"
+                    || root.dataset.wallpaperGeneration !== initialWallpaperGeneration
+                    || !(imageRequest.result instanceof Blob)) return;
+                const imageUrl = URL.createObjectURL(imageRequest.result);
+                bootstrapWallpaperUrl = imageUrl;
+                root.style.setProperty("--custom-wallpaper-url", `url(${JSON.stringify(imageUrl)})`);
+              };
+              transaction.oncomplete = () => db.close();
+              transaction.onerror = () => db.close();
+            } catch {
+              db.close();
+            }
+          };
+        } catch {
+          // Safe fallback
+        }
       }
     }
   }

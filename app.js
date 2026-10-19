@@ -2,6 +2,7 @@
   "use strict";
 
   const STORAGE_KEY = "qidian-bookmarks-v1";
+  const USER_DATA_CONSENT_KEY = "markdock-data-use-consent-v1";
   const VIEW_KEY = "qidian-view-mode-v1";
   const SORT_KEY = "qidian-sort-mode-v1";
   const DENSITY_KEY = "qidian-density-mode-v1";
@@ -40,6 +41,11 @@
   const queuedHighResolutionLookups = [];
   let highResolutionIconGeneration = 0;
   const EXTENSION_MODE = location.protocol === "chrome-extension:";
+  function hasUserDataConsent() {
+    if (!EXTENSION_MODE) return true;
+    try { return localStorage.getItem(USER_DATA_CONSENT_KEY) === "accepted"; }
+    catch { return false; }
+  }
   const chromeBookmarksBarNames = new Set([
     "书签栏",
     "書籤列",
@@ -178,16 +184,20 @@
   const savedSortMode = readPreference(SORT_KEY, "default");
   const savedDensityMode = readPreference(DENSITY_KEY, "comfortable");
   const savedSidebarCollapsed = readPreference(SIDEBAR_COLLAPSED_KEY, "false") === "true";
-  try { localStorage.removeItem(SOURCE_FILTER_KEY); } catch { /* ignore */ }
+  if (hasUserDataConsent()) {
+    try { localStorage.removeItem(SOURCE_FILTER_KEY); } catch { /* ignore */ }
+  }
 
   let savedNavigation = { expanded: [], collapsed: [] };
-  try {
-    const raw = JSON.parse(localStorage.getItem(NAV_TREE_KEY) || "{}");
-    savedNavigation = {
-      expanded: Array.isArray(raw.expanded) ? raw.expanded : [],
-      collapsed: Array.isArray(raw.collapsed) ? raw.collapsed : []
-    };
-  } catch { /* ignore */ }
+  if (hasUserDataConsent()) {
+    try {
+      const raw = JSON.parse(localStorage.getItem(NAV_TREE_KEY) || "{}");
+      savedNavigation = {
+        expanded: Array.isArray(raw.expanded) ? raw.expanded : [],
+        collapsed: Array.isArray(raw.collapsed) ? raw.collapsed : []
+      };
+    } catch { /* ignore */ }
+  }
 
   const state = {
     mode: EXTENSION_MODE || saved ? "personal" : "demo",
@@ -276,6 +286,7 @@
   }
 
   function loadState() {
+    if (!hasUserDataConsent()) return null;
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return null;
@@ -416,7 +427,7 @@
   }
 
   function syncPreferencesToCloud(data) {
-    if (!EXTENSION_MODE || !globalThis.chrome?.storage?.sync) return;
+    if (!EXTENSION_MODE || !hasUserDataConsent() || !globalThis.chrome?.storage?.sync) return;
     clearTimeout(syncStorageDebounceTimer);
     syncStorageDebounceTimer = setTimeout(() => {
       try {
@@ -448,7 +459,7 @@
   }
 
   function hydratePreferencesFromCloud() {
-    if (!EXTENSION_MODE || !globalThis.chrome?.storage?.sync) return;
+    if (!EXTENSION_MODE || !hasUserDataConsent() || !globalThis.chrome?.storage?.sync) return;
     try {
       chrome.storage.sync.get([NAV_TREE_KEY, VIEW_KEY, SORT_KEY, DENSITY_KEY, SIDEBAR_COLLAPSED_KEY], (items) => {
         if (chrome.runtime?.lastError || !items) return;
@@ -503,7 +514,7 @@
   }
 
   function setupStorageSyncListener() {
-    if (!EXTENSION_MODE || !globalThis.chrome?.storage?.onChanged) return;
+    if (!EXTENSION_MODE || !hasUserDataConsent() || !globalThis.chrome?.storage?.onChanged) return;
     try {
       chrome.storage.onChanged.addListener((changes, areaName) => {
         if (areaName !== "sync") return;
@@ -547,6 +558,7 @@
   }
 
   function saveViewPreferences() {
+    if (!hasUserDataConsent()) return;
     const navData = {
       expanded: [...state.expandedNavNodes],
       collapsed: [...state.collapsedNavNodes]
@@ -694,17 +706,19 @@
   const FAVICON_MISS_STORAGE_KEY = "qidian-favicon-miss-v1";
   const FAVICON_MISS_TTL_MS = 24 * 60 * 60 * 1000;
   const faviconMissMap = new Map();
-  try {
-    const rawMisses = JSON.parse(localStorage.getItem(FAVICON_MISS_STORAGE_KEY) || "[]");
-    const now = Date.now();
-    if (Array.isArray(rawMisses)) {
-      for (const [dir, expiresAt] of rawMisses) {
-        if (typeof dir === "string" && typeof expiresAt === "number" && expiresAt > now) {
-          faviconMissMap.set(dir, expiresAt);
+  if (hasUserDataConsent()) {
+    try {
+      const rawMisses = JSON.parse(localStorage.getItem(FAVICON_MISS_STORAGE_KEY) || "[]");
+      const now = Date.now();
+      if (Array.isArray(rawMisses)) {
+        for (const [dir, expiresAt] of rawMisses) {
+          if (typeof dir === "string" && typeof expiresAt === "number" && expiresAt > now) {
+            faviconMissMap.set(dir, expiresAt);
+          }
         }
       }
-    }
-  } catch { /* ignore */ }
+    } catch { /* ignore */ }
+  }
 
   function persistFaviconMisses() {
     try {
@@ -4472,6 +4486,7 @@
   }
 
   function startChromeSync() {
+    if (!hasUserDataConsent()) return;
     if (!chrome?.bookmarks?.getTree) {
       state.chromeSyncStatus = "error";
       render();
@@ -6788,10 +6803,29 @@
   // Initialization
   syncThemeButton();
   render();
-  void hydrateIconsFromIdb();
+  if (hasUserDataConsent()) void hydrateIconsFromIdb();
   if (EXTENSION_MODE) {
-    startChromeSync();
-    hydratePreferencesFromCloud();
-    setupStorageSyncListener();
+    if (hasUserDataConsent()) {
+      startChromeSync();
+      hydratePreferencesFromCloud();
+      setupStorageSyncListener();
+    } else {
+      const disclosure = $("#dataUseDisclosureDialog");
+      const acceptButton = $("#acceptDataUseButton");
+      const consentStatus = $("#dataUseConsentStatus");
+      acceptButton?.addEventListener("click", () => {
+        try {
+          localStorage.setItem(USER_DATA_CONSENT_KEY, "accepted");
+          location.reload();
+        } catch {
+          if (consentStatus) {
+            consentStatus.textContent = "无法保存同意状态；请检查扩展的本地存储空间后重试。";
+            consentStatus.hidden = false;
+          }
+        }
+      });
+      disclosure?.addEventListener("cancel", (event) => event.preventDefault());
+      if (disclosure && !disclosure.open) disclosure.showModal();
+    }
   }
 })();
