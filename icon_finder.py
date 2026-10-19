@@ -37,6 +37,7 @@ MAX_CACHE_BYTES = 128 * 1024 * 1024
 MAX_CACHE_ENTRIES = 512
 CACHE_PRUNE_INTERVAL = 60 * 60
 CACHE_PRUNE_BATCH = 8
+FAKE_IP_NETWORKS = (ipaddress.ip_network("198.18.0.0/15"), ipaddress.ip_network("2001:2::/48"))
 
 
 @dataclass
@@ -131,6 +132,11 @@ def _public_addresses(raw: str, *, allow_nonstandard_port: bool = False) -> tupl
         host = parsed.hostname
         if not host:
             return None
+        is_domain = False
+        try:
+            ipaddress.ip_address(host)
+        except ValueError:
+            is_domain = True
         port = parsed.port or (443 if parsed.scheme == "https" else 80)
         addresses = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
         if not addresses:
@@ -139,7 +145,10 @@ def _public_addresses(raw: str, *, allow_nonstandard_port: bool = False) -> tupl
         seen = set()
         for entry in addresses:
             address = ipaddress.ip_address(entry[4][0].split("%", 1)[0])
-            if not address.is_global:
+            is_valid = address.is_global or (
+                is_domain and any(address in net for net in FAKE_IP_NETWORKS)
+            )
+            if not is_valid:
                 return None
             key = (entry[0], entry[4])
             if key not in seen:

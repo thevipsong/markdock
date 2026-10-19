@@ -612,32 +612,33 @@
       const store = tx.objectStore("icons");
       const keysReq = store.getAllKeys();
       const valsReq = store.getAll();
-      keysReq.onsuccess = () => {
-        valsReq.onsuccess = () => {
-          const keys = keysReq.result || [];
-          const vals = valsReq.result || [];
-          let updated = false;
-          keys.forEach((k, idx) => {
-            const val = vals[idx];
-            if (val && validIcon(val.icon) && safeUrl(val.url)) {
-              const strKey = String(k);
-              if (!chromeIconOverrides.has(strKey)) {
-                chromeIconOverrides.set(strKey, { url: safeUrl(val.url), icon: val.icon });
-                updated = true;
-              }
+      let keys = null;
+      let vals = null;
+      const maybeFinish = () => {
+        if (!keys || !vals) return;
+        let updated = false;
+        keys.forEach((k, idx) => {
+          const val = vals[idx];
+          if (val && validIcon(val.icon) && safeUrl(val.url)) {
+            const strKey = String(k);
+            if (!chromeIconOverrides.has(strKey)) {
+              chromeIconOverrides.set(strKey, { url: safeUrl(val.url), icon: val.icon });
+              updated = true;
             }
-          });
-          if (updated) {
-            for (const item of state.items) {
-              if (item.source === "chrome" && !item.icon) {
-                const hydrated = chromeIconForBookmark(item.chromeId, item.url);
-                if (hydrated) item.icon = hydrated;
-              }
-            }
-            render({ refreshNavigation: false });
           }
-        };
+        });
+        if (updated) {
+          for (const item of state.items) {
+            if (item.source === "chrome" && !item.icon) {
+              const hydrated = chromeIconForBookmark(item.chromeId, item.url);
+              if (hydrated) item.icon = hydrated;
+            }
+          }
+          render({ refreshNavigation: false });
+        }
       };
+      keysReq.onsuccess = () => { keys = keysReq.result || []; maybeFinish(); };
+      valsReq.onsuccess = () => { vals = valsReq.result || []; maybeFinish(); };
     } catch { /* ignore */ }
   }
 
@@ -1729,10 +1730,13 @@
           }
           targetChromeFolderId = parentId;
         }
-        for (const item of chromeItems) {
+        const baseIndex = beforeItem?.source === "chrome" && typeof beforeItem.index === "number" && String(beforeItem.parentId) === String(targetChromeFolderId)
+          ? (placeAfter ? beforeItem.index + 1 : beforeItem.index)
+          : null;
+        for (const [i, item] of chromeItems.entries()) {
           const moveSpec = { parentId: String(targetChromeFolderId) };
-          if (beforeItem?.source === "chrome" && typeof beforeItem.index === "number" && String(beforeItem.parentId) === String(targetChromeFolderId)) {
-            moveSpec.index = placeAfter ? beforeItem.index + 1 : beforeItem.index;
+          if (baseIndex !== null) {
+            moveSpec.index = baseIndex + i;
           }
           await chrome.bookmarks.move(String(item.chromeId), moveSpec);
         }
@@ -5355,7 +5359,12 @@
   async function checkOneLink(item, signal) {
     if (signal.aborted) return { item, kind: "cancelled", detail: "已停止" };
     if (!/^https?:/i.test(item.url)) return { item, kind: "skip", detail: "非网页链接" };
-    const parsedUrl = new URL(item.url);
+    let parsedUrl;
+    try {
+      parsedUrl = new URL(item.url);
+    } catch {
+      return { item, kind: "dead", detail: "网址格式无效" };
+    }
     if (parsedUrl.username || parsedUrl.password) {
       return { item, kind: "uncertain", detail: "网址含登录信息，已跳过请求" };
     }
@@ -5976,6 +5985,23 @@
   // Close dialog buttons
   $$("[data-close-dialog]").forEach((button) => {
     button.addEventListener("click", () => $("#" + button.dataset.closeDialog).close());
+  });
+
+  // Backdrop click to dismiss dialogs
+  $$("dialog").forEach((dialog) => {
+    dialog.addEventListener("click", (event) => {
+      if (event.target !== dialog) return;
+      const rect = dialog.getBoundingClientRect();
+      const clickedBackdrop = (
+        event.clientX < rect.left ||
+        event.clientX > rect.right ||
+        event.clientY < rect.top ||
+        event.clientY > rect.bottom
+      );
+      if (clickedBackdrop) {
+        dialog.close();
+      }
+    });
   });
 
   refs.auditCancelButton.addEventListener("click", cancelDeadLinkCheck);

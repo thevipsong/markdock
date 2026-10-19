@@ -7,7 +7,8 @@
   "permissions": [
     "bookmarks",
     "favicon",
-    "contextMenus"
+    "contextMenus",
+    "activeTab"
   ],
   "optional_host_permissions": [
     "http://*/*",

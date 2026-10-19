@@ -78,7 +78,7 @@
   const oldMode = settings.wallpaperMode || (legacySettings.preset === "image" ? "custom" : "diffuse");
   const allowedModes = new Set(["diffuse", "gradient", "solid", "custom"]);
   const wallpaperMode = oldMode === "bing"
-    ? "diffuse"
+    ? "custom"
     : (allowedModes.has(oldMode) ? oldMode : "diffuse");
   const gradient = Object.hasOwn(gradients, settings.gradient) ? settings.gradient : "slate";
   const solid = settings.solidCustomized === true
@@ -112,7 +112,7 @@
   }
 
   if (wallpaperMode === "custom") {
-    const subMode = settings.imageSubMode || "curated";
+    const subMode = settings.imageSubMode || (oldMode === "bing" ? "bing" : "curated");
     if (subMode === "curated") {
       const file = curatedFiles[settings.curatedId] || curatedFiles.aurora;
       root.style.setProperty("--custom-wallpaper-url", `url(${JSON.stringify(file)})`);
