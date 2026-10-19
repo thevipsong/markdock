@@ -39,10 +39,10 @@
     }
   };
   const curatedFiles = {
-    aurora: "assets/wallpapers/aurora-flow.svg",
-    cosmic: "assets/wallpapers/cosmic-glow.svg",
-    zen: "assets/wallpapers/zen-mountain.svg",
-    dusk: "assets/wallpapers/warm-dusk.svg"
+    aurora: { dark: "assets/wallpapers/aurora-flow.svg", light: "assets/wallpapers/aurora-flow-light.svg" },
+    cosmic: { dark: "assets/wallpapers/cosmic-glow.svg", light: "assets/wallpapers/cosmic-glow-light.svg" },
+    zen: { dark: "assets/wallpapers/zen-mountain.svg", light: "assets/wallpapers/zen-mountain-light.svg" },
+    dusk: { dark: "assets/wallpapers/warm-dusk.svg", light: "assets/wallpapers/warm-dusk-light.svg" }
   };
   let settings = {};
 
@@ -114,7 +114,8 @@
   if (wallpaperMode === "custom") {
     const subMode = settings.imageSubMode || (oldMode === "bing" ? "bing" : "curated");
     if (subMode === "curated") {
-      const file = curatedFiles[settings.curatedId] || curatedFiles.aurora;
+      const item = curatedFiles[settings.curatedId] || curatedFiles.aurora;
+      const file = typeof item === "string" ? item : (item[theme] || item.dark);
       root.style.setProperty("--custom-wallpaper-url", `url(${JSON.stringify(file)})`);
     } else if (subMode === "bing") {
       const bingUrl = settings.cachedBingUrl;

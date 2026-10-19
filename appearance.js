@@ -44,10 +44,30 @@
   };
 
   const CURATED_WALLPAPERS = {
-    aurora: { name: "极光流动", url: "assets/wallpapers/aurora-flow.svg" },
-    cosmic: { name: "深邃星云", url: "assets/wallpapers/cosmic-glow.svg" },
-    zen: { name: "静谧远山", url: "assets/wallpapers/zen-mountain.svg" },
-    dusk: { name: "暮光落霞", url: "assets/wallpapers/warm-dusk.svg" }
+    aurora: {
+      name: "极光流动",
+      dark: "assets/wallpapers/aurora-flow.svg",
+      light: "assets/wallpapers/aurora-flow-light.svg",
+      url: "assets/wallpapers/aurora-flow.svg"
+    },
+    cosmic: {
+      name: "深邃星云",
+      dark: "assets/wallpapers/cosmic-glow.svg",
+      light: "assets/wallpapers/cosmic-glow-light.svg",
+      url: "assets/wallpapers/cosmic-glow.svg"
+    },
+    zen: {
+      name: "静谧远山",
+      dark: "assets/wallpapers/zen-mountain.svg",
+      light: "assets/wallpapers/zen-mountain-light.svg",
+      url: "assets/wallpapers/zen-mountain.svg"
+    },
+    dusk: {
+      name: "暮光落霞",
+      dark: "assets/wallpapers/warm-dusk.svg",
+      light: "assets/wallpapers/warm-dusk-light.svg",
+      url: "assets/wallpapers/warm-dusk.svg"
+    }
   };
 
   const SOLID_SWATCHES_DARK = [
@@ -273,7 +293,8 @@
     let imageUrl = "";
     if (isImageMode) {
       if (state.imageSubMode === "curated") {
-        imageUrl = CURATED_WALLPAPERS[state.curatedId]?.url || CURATED_WALLPAPERS.aurora.url;
+        const item = CURATED_WALLPAPERS[state.curatedId] || CURATED_WALLPAPERS.aurora;
+        imageUrl = item[state.theme] || item.dark || item.url;
       } else if (state.imageSubMode === "bing") {
         imageUrl = state.cachedBingUrl;
       } else if (state.imageSubMode === "upload") {
@@ -491,10 +512,18 @@
     if (bingCard) bingCard.hidden = !isImageMode || state.imageSubMode !== "bing";
     if (customUploadBox) customUploadBox.hidden = !isImageMode || state.imageSubMode !== "upload";
 
-    // 精选壁纸选中高亮
+    // 精选壁纸选中高亮与缩略图更新
     document.querySelectorAll("[data-curated-id]").forEach((item) => {
       const selected = item.dataset.curatedId === state.curatedId;
       item.classList.toggle("is-active", selected);
+      const config = CURATED_WALLPAPERS[item.dataset.curatedId];
+      if (config) {
+        const thumb = item.querySelector(".curated-thumb");
+        const thumbUrl = config[state.theme] || config.dark || config.url;
+        if (thumb && thumbUrl) {
+          thumb.style.backgroundImage = `url('${thumbUrl}')`;
+        }
+      }
     });
 
     // 必应卡片预览信息
@@ -819,7 +848,23 @@
       const theme = themeFromSkin(skinId);
       if (theme) applyTheme(theme);
     },
-    toggleTheme: () => applyTheme(state.theme === "dark" ? "light" : "dark")
+    toggleTheme: () => applyTheme(state.theme === "dark" ? "light" : "dark"),
+    setWallpaperMode: (mode) => {
+      state.wallpaperMode = mode;
+      saveSettings();
+      applyWallpaper();
+      updateWallpaperUI();
+    },
+    setCuratedId: (id) => {
+      if (CURATED_WALLPAPERS[id]) {
+        state.curatedId = id;
+        state.imageSubMode = "curated";
+        state.wallpaperMode = "custom";
+        saveSettings();
+        applyWallpaper();
+        updateWallpaperUI();
+      }
+    }
   };
 
   applyTheme(state.theme, false);
