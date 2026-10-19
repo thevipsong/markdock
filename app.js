@@ -234,6 +234,8 @@
   let chromeFolders = new Map();
   let chromeBarRootAlternateLabel = "";
   let contextMenuReturnFocus = null;
+  let syncStorageDebounceTimer = null;
+  let loadMoreObserver = null;
   const dialogFocusReturns = new WeakMap();
   const pinyinCollator = new Intl.Collator("zh-u-co-pinyin");
   const pinyinAnchors = [..."阿八擦搭蛾发噶哈击喀垃妈拿哦啪七然仨塌挖夕压匝"];
@@ -413,17 +415,157 @@
     }
   }
 
+  function syncPreferencesToCloud(data) {
+    if (!EXTENSION_MODE || !globalThis.chrome?.storage?.sync) return;
+    clearTimeout(syncStorageDebounceTimer);
+    syncStorageDebounceTimer = setTimeout(() => {
+      try {
+        const payload = {};
+        if (data[NAV_TREE_KEY]) {
+          const nav = data[NAV_TREE_KEY];
+          let exp = Array.isArray(nav.expanded) ? nav.expanded.slice(0, 120) : [];
+          let col = Array.isArray(nav.collapsed) ? nav.collapsed.slice(0, 120) : [];
+          let serialized = JSON.stringify({ expanded: exp, collapsed: col });
+          while (serialized.length > 7200 && (exp.length > 20 || col.length > 20)) {
+            exp = exp.slice(0, Math.max(10, Math.floor(exp.length * 0.8)));
+            col = col.slice(0, Math.max(10, Math.floor(col.length * 0.8)));
+            serialized = JSON.stringify({ expanded: exp, collapsed: col });
+          }
+          payload[NAV_TREE_KEY] = serialized;
+        }
+        if (data[VIEW_KEY]) payload[VIEW_KEY] = data[VIEW_KEY];
+        if (data[SORT_KEY]) payload[SORT_KEY] = data[SORT_KEY];
+        if (data[DENSITY_KEY]) payload[DENSITY_KEY] = data[DENSITY_KEY];
+        if (data[SIDEBAR_COLLAPSED_KEY] != null) payload[SIDEBAR_COLLAPSED_KEY] = String(data[SIDEBAR_COLLAPSED_KEY]);
+
+        chrome.storage.sync.set(payload, () => {
+          if (chrome.runtime?.lastError) {
+            /* ignore quota or network sync error */
+          }
+        });
+      } catch { /* ignore */ }
+    }, 450);
+  }
+
+  function hydratePreferencesFromCloud() {
+    if (!EXTENSION_MODE || !globalThis.chrome?.storage?.sync) return;
+    try {
+      chrome.storage.sync.get([NAV_TREE_KEY, VIEW_KEY, SORT_KEY, DENSITY_KEY, SIDEBAR_COLLAPSED_KEY], (items) => {
+        if (chrome.runtime?.lastError || !items) return;
+        let changed = false;
+        if (items[NAV_TREE_KEY]) {
+          try {
+            const raw = typeof items[NAV_TREE_KEY] === "string" ? JSON.parse(items[NAV_TREE_KEY]) : items[NAV_TREE_KEY];
+            if (Array.isArray(raw?.expanded) && raw.expanded.length > 0) {
+              for (const item of raw.expanded) state.expandedNavNodes.add(item);
+              changed = true;
+            }
+            if (Array.isArray(raw?.collapsed) && raw.collapsed.length > 0) {
+              for (const item of raw.collapsed) state.collapsedNavNodes.add(item);
+              changed = true;
+            }
+          } catch { /* ignore */ }
+        }
+        if (items[VIEW_KEY] && ["grid", "list"].includes(items[VIEW_KEY]) && state.viewMode !== items[VIEW_KEY]) {
+          state.viewMode = items[VIEW_KEY];
+          changed = true;
+        }
+        if (items[SORT_KEY] && ["default", "name", "recent", "domain"].includes(items[SORT_KEY]) && state.sortMode !== items[SORT_KEY]) {
+          state.sortMode = items[SORT_KEY];
+          changed = true;
+        }
+        if (items[DENSITY_KEY] && ["compact", "comfortable"].includes(items[DENSITY_KEY]) && state.densityMode !== items[DENSITY_KEY]) {
+          state.densityMode = items[DENSITY_KEY];
+          changed = true;
+        }
+        if (items[SIDEBAR_COLLAPSED_KEY] != null) {
+          const val = items[SIDEBAR_COLLAPSED_KEY] === true || items[SIDEBAR_COLLAPSED_KEY] === "true";
+          if (state.sidebarCollapsed !== val) {
+            state.sidebarCollapsed = val;
+            changed = true;
+          }
+        }
+        if (changed) {
+          try {
+            localStorage.setItem(VIEW_KEY, state.viewMode);
+            localStorage.setItem(SORT_KEY, state.sortMode);
+            localStorage.setItem(DENSITY_KEY, state.densityMode);
+            localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(state.sidebarCollapsed));
+            localStorage.setItem(NAV_TREE_KEY, JSON.stringify({
+              expanded: [...state.expandedNavNodes],
+              collapsed: [...state.collapsedNavNodes]
+            }));
+          } catch { /* storage quota */ }
+          render();
+        }
+      });
+    } catch { /* ignore */ }
+  }
+
+  function setupStorageSyncListener() {
+    if (!EXTENSION_MODE || !globalThis.chrome?.storage?.onChanged) return;
+    try {
+      chrome.storage.onChanged.addListener((changes, areaName) => {
+        if (areaName !== "sync") return;
+        let changed = false;
+        if (changes[NAV_TREE_KEY]?.newValue) {
+          try {
+            const raw = typeof changes[NAV_TREE_KEY].newValue === "string"
+              ? JSON.parse(changes[NAV_TREE_KEY].newValue)
+              : changes[NAV_TREE_KEY].newValue;
+            if (Array.isArray(raw?.expanded)) {
+              state.expandedNavNodes = new Set(raw.expanded);
+              changed = true;
+            }
+            if (Array.isArray(raw?.collapsed)) {
+              state.collapsedNavNodes = new Set(raw.collapsed);
+              changed = true;
+            }
+          } catch { /* ignore */ }
+        }
+        if (changes[VIEW_KEY]?.newValue && ["grid", "list"].includes(changes[VIEW_KEY].newValue)) {
+          state.viewMode = changes[VIEW_KEY].newValue;
+          changed = true;
+        }
+        if (changes[SORT_KEY]?.newValue && ["default", "name", "recent", "domain"].includes(changes[SORT_KEY].newValue)) {
+          state.sortMode = changes[SORT_KEY].newValue;
+          changed = true;
+        }
+        if (changes[DENSITY_KEY]?.newValue && ["compact", "comfortable"].includes(changes[DENSITY_KEY].newValue)) {
+          state.densityMode = changes[DENSITY_KEY].newValue;
+          changed = true;
+        }
+        if (changes[SIDEBAR_COLLAPSED_KEY]?.newValue != null) {
+          state.sidebarCollapsed = changes[SIDEBAR_COLLAPSED_KEY].newValue === true || changes[SIDEBAR_COLLAPSED_KEY].newValue === "true";
+          changed = true;
+        }
+        if (changed) {
+          render();
+        }
+      });
+    } catch { /* ignore */ }
+  }
+
   function saveViewPreferences() {
+    const navData = {
+      expanded: [...state.expandedNavNodes],
+      collapsed: [...state.collapsedNavNodes]
+    };
     try {
       localStorage.setItem(VIEW_KEY, state.viewMode);
       localStorage.setItem(SORT_KEY, state.sortMode);
       localStorage.setItem(DENSITY_KEY, state.densityMode);
       localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(state.sidebarCollapsed));
-      localStorage.setItem(NAV_TREE_KEY, JSON.stringify({
-        expanded: [...state.expandedNavNodes],
-        collapsed: [...state.collapsedNavNodes]
-      }));
+      localStorage.setItem(NAV_TREE_KEY, JSON.stringify(navData));
     } catch { /* storage quota */ }
+
+    syncPreferencesToCloud({
+      [NAV_TREE_KEY]: navData,
+      [VIEW_KEY]: state.viewMode,
+      [SORT_KEY]: state.sortMode,
+      [DENSITY_KEY]: state.densityMode,
+      [SIDEBAR_COLLAPSED_KEY]: state.sidebarCollapsed
+    });
   }
 
   function safeUrl(input) {
@@ -682,6 +824,37 @@
       const host = parsed.hostname.replace(/^www\./, "");
       return parsed.port ? `${host}:${parsed.port}` : host;
     } catch { return ""; }
+  }
+
+  function getDomainClusters(minCount = 2) {
+    const counts = new Map();
+    for (const item of state.items) {
+      if (!webPageUrl(item.url)) continue;
+      const host = hostOf(item.url);
+      if (!host) continue;
+      counts.set(host, (counts.get(host) || 0) + 1);
+    }
+    const clusters = [];
+    for (const [domain, count] of counts.entries()) {
+      if (count >= minCount) {
+        clusters.push({ domain, count });
+      }
+    }
+    clusters.sort((a, b) => b.count - a.count || a.domain.localeCompare(b.domain));
+    return clusters;
+  }
+
+  function filterByDomain(domain) {
+    if (!domain) return;
+    state.activeTab = "all";
+    state.quickSourceFilter = "all";
+    state.query = domain;
+    refs.search.value = domain;
+    state.limit = PAGE_SIZE;
+    render();
+    refs.search.focus({ preventScroll: true });
+    refs.search.select();
+    toast(`已筛选站点：${domain}`);
   }
 
   function decodeUrlText(value) {
@@ -1809,15 +1982,23 @@
         const groupLower = item.group.toLocaleLowerCase();
         const pathValue = getNavigationPath(item).join(" ");
         const pathLower = pathValue.toLocaleLowerCase();
-        return tokens.every((token) => titleLower.includes(token)
-          || urlLower.includes(token)
-          || categoryLower.includes(token)
-          || groupLower.includes(token)
-          || pathLower.includes(token)
-          || pinyinInitialMatches(item.title, token)
-          || pinyinInitialMatches(pathValue, token))
-          || (compactQuery && (pinyinInitialMatches(item.title, compactQuery)
-            || pinyinInitialMatches(pathValue, compactQuery)));
+        const itemHost = hostOf(item.url).toLocaleLowerCase();
+        return tokens.every((token) => {
+          const domainPrefixMatch = token.match(/^(?:site:|domain:|@)(.+)$/i);
+          if (domainPrefixMatch) {
+            const domainPart = domainPrefixMatch[1].toLocaleLowerCase();
+            return itemHost.includes(domainPart) || urlLower.includes(domainPart);
+          }
+          return titleLower.includes(token)
+            || urlLower.includes(token)
+            || categoryLower.includes(token)
+            || groupLower.includes(token)
+            || pathLower.includes(token)
+            || pinyinInitialMatches(item.title, token)
+            || pinyinInitialMatches(pathValue, token);
+        })
+        || (compactQuery && (pinyinInitialMatches(item.title, compactQuery)
+          || pinyinInitialMatches(pathValue, compactQuery)));
       });
     }
 
@@ -2239,7 +2420,9 @@
   function createBookmarkGrid(items, queryTokens, groupPath = null) {
     const grid = document.createElement("div");
     grid.className = "bookmark-grid";
-    for (const item of items) grid.append(buildBookmark(item, queryTokens, groupPath));
+    const fragment = document.createDocumentFragment();
+    for (const item of items) fragment.append(buildBookmark(item, queryTokens, groupPath));
+    grid.append(fragment);
     return grid;
   }
 
@@ -2322,6 +2505,10 @@
     state.keyboardIndex = -1;
     hideBookmarkTooltip();
     hideContextMenu();
+    if (loadMoreObserver) {
+      loadMoreObserver.disconnect();
+      loadMoreObserver = null;
+    }
 
     document.documentElement.dataset.sidebarCollapsed = String(state.sidebarCollapsed);
     if (refs.sidebarCollapseButton) {
@@ -2431,6 +2618,17 @@
         render({ refreshNavigation: false });
       });
       refs.content.append(button);
+      if (globalThis.IntersectionObserver) {
+        loadMoreObserver = new IntersectionObserver((entries) => {
+          if (entries[0]?.isIntersecting) {
+            loadMoreObserver?.disconnect();
+            loadMoreObserver = null;
+            state.limit += PAGE_SIZE;
+            render({ refreshNavigation: false });
+          }
+        }, { rootMargin: "350px" });
+        loadMoreObserver.observe(button);
+      }
     }
   }
 
@@ -5672,11 +5870,18 @@
     }
   }
 
+  function showDomainClusterPicker() {
+    openCommandPalette();
+    refs.commandInput.value = "@";
+    renderCommandPaletteOptions();
+  }
+
   function commandActions() {
     return [
       { id: "search", label: "搜索书签", detail: "聚焦搜索框", run: () => { closeCommandPalette(); refs.search.focus(); refs.search.select(); } },
       { id: "all", label: "全部书签", detail: "查看完整书签库", run: () => { state.activeTab = "all"; state.quickSourceFilter = "all"; state.query = ""; refs.search.value = ""; render(); } },
       { id: "favorites", label: "收藏", detail: "查看收藏的网址", run: () => { state.activeTab = "favorites"; state.quickSourceFilter = "all"; state.query = ""; refs.search.value = ""; render(); } },
+      { id: "domain-cluster", label: "按站点域名筛选", detail: "快速浏览高频站点书签聚合 (输入 @)", run: () => showDomainClusterPicker() },
       { id: "add", label: "添加书签", detail: "新建书签或文件夹", run: () => openDialog() },
       { id: "theme", label: "切换黑白主题", detail: "在暗黑与白色模式间切换", run: toggleTheme },
       { id: "view", label: "切换网格 / 列表", detail: `当前：${state.viewMode === "grid" ? "网格" : "列表"}`, run: () => { state.viewMode = state.viewMode === "grid" ? "list" : "grid"; saveViewPreferences(); render({ refreshNavigation: false }); } },
@@ -5690,24 +5895,62 @@
   }
 
   function renderCommandPaletteOptions() {
-    const query = refs.commandInput.value.trim().toLocaleLowerCase();
-    const actions = commandActions().filter((entry) => !query
-      || `${entry.label} ${entry.detail}`.toLocaleLowerCase().includes(query)
-      || pinyinInitialMatches(entry.label, query));
-    const bookmarks = query
-      ? state.items.filter((item) => `${item.title} ${item.url} ${hostOf(item.url)}`.toLocaleLowerCase().includes(query)
-        || pinyinInitialMatches(item.title, query))
-        .sort((a, b) => (b.dateAdded || 0) - (a.dateAdded || 0))
-        .slice(0, 8)
-        .map((item) => ({ id: `bookmark:${item.id}`, kind: "bookmark", item, label: item.title, detail: `${hostOf(item.url)} · ${getNavigationPath(item).join(" › ")}` }))
-      : [];
-    commandOptions = [...bookmarks, ...actions].slice(0, 12);
+    const rawInput = refs.commandInput.value.trim();
+    const isDomainSearch = rawInput.startsWith("@") || rawInput.startsWith("site:") || rawInput.startsWith("domain:");
+    const query = isDomainSearch
+      ? rawInput.replace(/^@|^(?:site|domain):/i, "").trim().toLocaleLowerCase()
+      : rawInput.toLocaleLowerCase();
+
+    const domainClusters = getDomainClusters(2);
+    let domainOptions = [];
+
+    if (isDomainSearch) {
+      domainOptions = domainClusters
+        .filter((c) => !query || c.domain.toLocaleLowerCase().includes(query))
+        .slice(0, 12)
+        .map((c) => ({
+          id: `domain:${c.domain}`,
+          kind: "domain",
+          domain: c.domain,
+          label: `站点：${c.domain}`,
+          detail: `聚合筛选该站点下的 ${c.count} 个书签`
+        }));
+      commandOptions = domainOptions;
+    } else {
+      const actions = commandActions().filter((entry) => !query
+        || `${entry.label} ${entry.detail}`.toLocaleLowerCase().includes(query)
+        || pinyinInitialMatches(entry.label, query));
+
+      if (query) {
+        domainOptions = domainClusters
+          .filter((c) => c.domain.toLocaleLowerCase().includes(query))
+          .slice(0, 3)
+          .map((c) => ({
+            id: `domain:${c.domain}`,
+            kind: "domain",
+            domain: c.domain,
+            label: `站点：${c.domain}`,
+            detail: `聚合筛选该站点下的 ${c.count} 个书签`
+          }));
+      }
+
+      const bookmarks = query
+        ? state.items.filter((item) => `${item.title} ${item.url} ${hostOf(item.url)}`.toLocaleLowerCase().includes(query)
+          || pinyinInitialMatches(item.title, query))
+          .sort((a, b) => (b.dateAdded || 0) - (a.dateAdded || 0))
+          .slice(0, 8)
+          .map((item) => ({ id: `bookmark:${item.id}`, kind: "bookmark", item, label: item.title, detail: `${hostOf(item.url)} · ${getNavigationPath(item).join(" › ")}` }))
+        : [];
+
+      commandOptions = [...bookmarks, ...domainOptions, ...actions].slice(0, 12);
+    }
+
     commandActiveIndex = Math.min(commandActiveIndex, Math.max(0, commandOptions.length - 1));
     refs.commandResults.replaceChildren();
     if (!commandOptions.length) {
       const empty = document.createElement("div");
       empty.className = "command-empty-state";
-      empty.textContent = "没有匹配的操作或书签";
+      empty.textContent = isDomainSearch ? "未找到包含此名称的站点" : "没有匹配的操作或书签";
       refs.commandResults.append(empty);
       return;
     }
@@ -5722,7 +5965,9 @@
       mark.className = "command-result-mark";
       mark.innerHTML = option.kind === "bookmark"
         ? `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5h10a1 1 0 0 1 1 1v14.2l-6-3.6-6 3.6V5.5a1 1 0 0 1 1-1Z"/></svg>`
-        : `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h8"/></svg>`;
+        : (option.kind === "domain"
+          ? `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3.6 9h16.8M3.6 15h16.8M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg>`
+          : `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h8"/></svg>`);
       const text = document.createElement("span");
       text.className = "command-result-copy";
       const label = document.createElement("strong");
@@ -5768,6 +6013,10 @@
     const option = commandOptions[index];
     if (!option) return;
     closeCommandPalette();
+    if (option.kind === "domain") {
+      filterByDomain(option.domain);
+      return;
+    }
     if (option.kind !== "bookmark") {
       option.run();
       return;
@@ -6103,7 +6352,14 @@
       return;
     }
 
-    if (action === "open") {
+    if (action === "filter-domain") {
+      const host = hostOf(item.url);
+      if (host) {
+        filterByDomain(host);
+      } else {
+        restoreBookmarkContextFocus();
+      }
+    } else if (action === "open") {
       const url = safeUrl(item.url);
       if (!url) {
         toast(restrictedBookmarkMessage(item.url));
@@ -6533,5 +6789,9 @@
   syncThemeButton();
   render();
   void hydrateIconsFromIdb();
-  if (EXTENSION_MODE) startChromeSync();
+  if (EXTENSION_MODE) {
+    startChromeSync();
+    hydratePreferencesFromCloud();
+    setupStorageSyncListener();
+  }
 })();

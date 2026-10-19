@@ -8,7 +8,8 @@
     "bookmarks",
     "favicon",
     "contextMenus",
-    "activeTab"
+    "activeTab",
+    "storage"
   ],
   "optional_host_permissions": [
     "http://*/*",
