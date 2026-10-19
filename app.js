@@ -2254,6 +2254,8 @@
     toolbar.className = "content-heading";
     const copy = document.createElement("div");
     copy.className = "content-heading-copy";
+    const titleLine = document.createElement("div");
+    titleLine.className = "content-heading-title-line";
     const title = document.createElement("h2");
     const caption = document.createElement("p");
     caption.className = "content-caption";
@@ -2285,12 +2287,18 @@
         segment.textContent = part;
         breadcrumb.append(segment);
       }
-      copy.append(breadcrumb, title, caption);
+      copy.append(breadcrumb);
     } else {
       title.textContent = "全部书签";
-      caption.textContent = `${count} 个网址，随时回到需要的页面`;
+      const countBadge = document.createElement("span");
+      countBadge.className = "content-heading-count";
+      countBadge.textContent = String(count);
+      countBadge.setAttribute("aria-label", `${count} 个网址`);
+      titleLine.append(countBadge);
     }
-    if (copy.childElementCount === 0) copy.append(title, caption);
+    titleLine.prepend(title);
+    copy.append(titleLine);
+    if (caption.textContent) copy.append(caption);
 
     const tools = document.createElement("div");
     tools.className = "content-heading-tools";
