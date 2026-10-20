@@ -7415,6 +7415,9 @@
   if (hasUserDataConsent()) void hydrateIconsFromIdb();
   if (EXTENSION_MODE) {
     if (hasUserDataConsent()) {
+      if (globalThis.chrome?.storage?.local) {
+        chrome.storage.local.set({ [USER_DATA_CONSENT_KEY]: "accepted" }).catch(() => {});
+      }
       startChromeSync();
       hydratePreferencesFromCloud();
       setupStorageSyncListener();
@@ -7422,9 +7425,12 @@
       const disclosure = $("#dataUseDisclosureDialog");
       const acceptButton = $("#acceptDataUseButton");
       const consentStatus = $("#dataUseConsentStatus");
-      acceptButton?.addEventListener("click", () => {
+      acceptButton?.addEventListener("click", async () => {
         try {
           localStorage.setItem(USER_DATA_CONSENT_KEY, "accepted");
+          if (globalThis.chrome?.storage?.local) {
+            await chrome.storage.local.set({ [USER_DATA_CONSENT_KEY]: "accepted" });
+          }
           location.reload();
         } catch {
           if (consentStatus) {

@@ -1,7 +1,17 @@
 const openingProfiles = new Map();
+const USER_DATA_CONSENT_KEY = "markdock-data-use-consent-v1";
 const MENU_SAVE_PAGE = "markdock-save-page";
 const MENU_SAVE_LINK = "markdock-save-link";
 const MENU_OPEN_GALLERY = "markdock-open-gallery";
+
+async function hasUserDataConsent() {
+  try {
+    const res = await chrome.storage?.local?.get(USER_DATA_CONSENT_KEY);
+    return res?.[USER_DATA_CONSENT_KEY] === "accepted";
+  } catch {
+    return false;
+  }
+}
 
 let isSettingUpMenus = false;
 
@@ -96,6 +106,11 @@ chrome.contextMenus?.onClicked.addListener(async (info, tab) => {
     await triggerOpenGallery(tab);
     return;
   }
+  if (!(await hasUserDataConsent())) {
+    await triggerOpenGallery(tab);
+    flashBadge("需同意");
+    return;
+  }
   if (info.menuItemId === MENU_SAVE_LINK && info.linkUrl) {
     const res = await quickSaveBookmark(info.linkUrl, info.selectionText || info.linkUrl);
     if (res) flashBadge(res.status === "created" ? "✓" : "已存");
@@ -111,6 +126,11 @@ chrome.contextMenus?.onClicked.addListener(async (info, tab) => {
 
 chrome.commands?.onCommand.addListener(async (command, tab) => {
   if (command === "quick-bookmark-current-page") {
+    if (!(await hasUserDataConsent())) {
+      await triggerOpenGallery(tab);
+      flashBadge("需同意");
+      return;
+    }
     const pageUrl = tab?.url;
     if (pageUrl && /^https?:\/\//i.test(pageUrl)) {
       const res = await quickSaveBookmark(pageUrl, tab?.title || pageUrl);
