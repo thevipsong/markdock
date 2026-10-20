@@ -9,6 +9,31 @@
   const SIDEBAR_COLLAPSED_KEY = "qidian-sidebar-collapsed-v1";
   const SOURCE_FILTER_KEY = "qidian-source-filter-v1";
   const NAV_TREE_KEY = "qidian-expanded-navigation-v1";
+  const SEARCH_ENGINE_KEY = "qidian-search-engine-v1";
+  const SEARCH_ENGINES = {
+    google: { name: "Google", label: "Google 搜索", home: "https://www.google.com", url: "https://www.google.com/search?q=" },
+    bing: { name: "Bing 必应", label: "Bing 搜索", home: "https://www.bing.com", url: "https://www.bing.com/search?q=" },
+    baidu: { name: "百度搜索", label: "百度搜索", home: "https://www.baidu.com", url: "https://www.baidu.com/s?wd=" },
+    duckduckgo: { name: "DuckDuckGo", label: "DuckDuckGo", home: "https://duckduckgo.com", url: "https://duckduckgo.com/?q=" }
+  };
+  const MORANDI_PALETTE = [
+    // 0: Mint Celadon (浅薄荷绿 + 深森绿字，如「纯」)
+    { bgLight: "#dcfce7", fgLight: "#15803d", borderLight: "rgba(21, 128, 61, 0.14)", bgDark: "rgba(34, 197, 94, 0.20)", fgDark: "#86efac", borderDark: "rgba(134, 239, 172, 0.24)" },
+    // 1: Mist Sky Blue (浅雾霾蓝 + 深海蓝字，如「中」)
+    { bgLight: "#e0f2fe", fgLight: "#0369a1", borderLight: "rgba(3, 105, 161, 0.14)", bgDark: "rgba(14, 165, 233, 0.20)", fgDark: "#7dd3fc", borderDark: "rgba(125, 211, 252, 0.24)" },
+    // 2: Muted Lavender (浅丁香紫 + 深紫字)
+    { bgLight: "#f3e8ff", fgLight: "#6b21a8", borderLight: "rgba(107, 33, 168, 0.14)", bgDark: "rgba(168, 85, 247, 0.20)", fgDark: "#d8b4fe", borderDark: "rgba(216, 180, 254, 0.24)" },
+    // 3: Dusty Rose (浅茱萸粉 + 深玫红字)
+    { bgLight: "#ffe4e6", fgLight: "#be123c", borderLight: "rgba(190, 18, 60, 0.14)", bgDark: "rgba(244, 63, 94, 0.20)", fgDark: "#fda4af", borderDark: "rgba(253, 164, 175, 0.24)" },
+    // 4: Warm Amber (浅暖杏黄 + 深琥珀字)
+    { bgLight: "#fef3c7", fgLight: "#b45309", borderLight: "rgba(180, 83, 9, 0.14)", bgDark: "rgba(245, 158, 11, 0.20)", fgDark: "#fcd34d", borderDark: "rgba(252, 211, 77, 0.24)" },
+    // 5: Mineral Teal (浅青瓷绿 + 深青绿字)
+    { bgLight: "#ccfbf1", fgLight: "#0f766e", borderLight: "rgba(15, 118, 110, 0.14)", bgDark: "rgba(20, 184, 166, 0.20)", fgDark: "#5eead4", borderDark: "rgba(94, 234, 212, 0.24)" },
+    // 6: Periwinkle Indigo (浅雾靛蓝 + 深靛青字)
+    { bgLight: "#e0e7ff", fgLight: "#3730a3", borderLight: "rgba(55, 48, 163, 0.14)", bgDark: "rgba(99, 102, 241, 0.20)", fgDark: "#a5b4fc", borderDark: "rgba(165, 180, 252, 0.24)" },
+    // 7: Soft Peach (浅珊瑚杏 + 深橘褐字)
+    { bgLight: "#ffedd5", fgLight: "#c2410c", borderLight: "rgba(194, 65, 12, 0.14)", bgDark: "rgba(249, 115, 22, 0.20)", fgDark: "#fdba74", borderDark: "rgba(253, 186, 116, 0.24)" }
+  ];
   const IS_EDGE = /\bEdg\//i.test(navigator.userAgent);
   const BROWSER_NAME = IS_EDGE ? "Edge" : (/\bChrome\//i.test(navigator.userAgent) ? "Chrome" : "浏览器");
   const BOOKMARK_TERM = IS_EDGE ? "收藏夹" : "书签";
@@ -96,6 +121,10 @@
     tabs: $("#tabs"), subTabsWrap: $("#subTabsWrap"), subTabs: $("#subTabs"),
     content: $("#content"), contentAnnouncement: $("#contentAnnouncement"), count: $("#countLine"), footerCount: $("#footerCount"),
     banner: $("#demoBanner"), search: $("#searchInput"), searchClear: $("#searchClearBtn"),
+    searchBox: $("#searchBox"), searchWebControls: $("#searchWebControls"),
+    webSearchBtn: $("#webSearchBtn"), webSearchBtnLabel: $("#webSearchBtnLabel"),
+    searchEngineBtn: $("#searchEngineBtn"), searchEngineMenu: $("#searchEngineMenu"),
+    searchShortcutKbd: $("#searchShortcutKbd"), hintWebSearchBtn: $("#hintWebSearchBtn"),
     searchHintBar: $("#searchHintBar"), searchResultNote: $("#searchResultNote"), clearSearchScopeBtn: $("#clearSearchScopeBtn"),
     file: $("#fileInput"), quickAdd: $("#quickAddButton"),
     collapseAllBtn: $("#collapseAllButton"), collapseAllLabel: $("#collapseAllLabel"),
@@ -103,6 +132,7 @@
     importButton: $("#importButton"), demoImportButton: $("#demoImportButton"),
     exportButton: $("#exportButton"), exportMenu: $("#exportMenu"),
     duplicateButton: $("#duplicateButton"), deadLinkButton: $("#deadLinkButton"),
+    commandPaletteButton: $("#commandPaletteButton"),
     shortcutsButton: $("#shortcutsButton"), shortcutsMenuItem: $("#shortcutsMenuItem"), shortcutsDialog: $("#shortcutsDialog"), footerShortcutsLink: $("#footerShortcutsLink"),
     themeToggle: $("#themeToggle"), appearanceMenuItem: $("#appearanceMenuItem"),
     sidebarStorageStatus: $("#sidebarStorageStatus"),
@@ -123,7 +153,7 @@
     sidebarCollapseButton: $("#sidebarCollapseButton"),
     selectionToolbar: $("#selectionToolbar"), selectionCount: $("#selectionCount"),
     selectAllResultsButton: $("#selectAllResultsButton"), clearSelectionButton: $("#clearSelectionButton"),
-    selectionMoveButton: $("#selectionMoveButton"), selectionFavoriteButton: $("#selectionFavoriteButton"),
+    selectionMoveButton: $("#selectionMoveButton"), selectionFavoriteButton: $("#selectionFavoriteButton"), selectionFavoriteLabel: $("#selectionFavoriteLabel"),
     selectionDeleteButton: $("#selectionDeleteButton"), selectionExitButton: $("#selectionExitButton"),
     commandDialog: $("#commandDialog"), commandInput: $("#commandInput"), commandResults: $("#commandResults"),
     closeCommandButton: $("#closeCommandButton"), toastMessage: $("#toastMessage"), toastAction: $("#toastAction")
@@ -184,6 +214,7 @@
   const savedSortMode = readPreference(SORT_KEY, "default");
   const savedDensityMode = readPreference(DENSITY_KEY, "comfortable");
   const savedSidebarCollapsed = readPreference(SIDEBAR_COLLAPSED_KEY, "false") === "true";
+  const savedSearchEngine = readPreference(SEARCH_ENGINE_KEY, "google");
   if (hasUserDataConsent()) {
     try { localStorage.removeItem(SOURCE_FILTER_KEY); } catch { /* ignore */ }
   }
@@ -216,6 +247,7 @@
     viewMode: savedViewMode === "list" ? "list" : "grid",
     densityMode: savedDensityMode === "compact" ? "compact" : "comfortable",
     sidebarCollapsed: savedSidebarCollapsed,
+    searchEngine: Object.prototype.hasOwnProperty.call(SEARCH_ENGINES, savedSearchEngine) ? savedSearchEngine : "google",
     quickSourceFilter: "all",
     selectionMode: false,
     selectedBookmarkIds: new Set(),
@@ -962,14 +994,167 @@
 
   function extractLeadingEmoji(text) {
     if (!text || typeof text !== "string") return { emoji: "", label: "" };
-    const match = text.match(/^(\p{Extended_Pictographic}(?:\uFE0F|\u200d\p{Extended_Pictographic})*)\s*/u);
+    const trimmed = text.trimStart();
+    const match = trimmed.match(/^((?:[\p{Extended_Pictographic}\p{Emoji_Presentation}](?:\uFE0F|\u20E3)?(?:\u200D[\p{Extended_Pictographic}\p{Emoji_Presentation}](?:\uFE0F|\u20E3)?)*))\s*/u);
     if (match) {
       return {
         emoji: match[1],
-        label: text.slice(match[0].length).trim() || text,
+        label: trimmed.slice(match[0].length).trim() || trimmed,
       };
     }
     return { emoji: "", label: text };
+  }
+
+  function hasSemanticFolderIcon(emoji, label = "") {
+    const e = String(emoji || "");
+    const l = String(label || "");
+    return /🖥️|💻|🖧|🗄️|📡|🔌|🏠|🎬|📺|🎥|🍿|🎞️|🎵|🎧|🎮|🤖|🧠|✨|🪄|⚡|🔮|☁️|🌐|🔗|🚀|🛰️|🛠️|🔧|⚙️|🧰|🔨|🧪|📦|📚|📖|📝|📄|🎓|📰|🎨|🖼️|💎|🌈|✏️/u.test(e)
+      || /nas|飞牛|群晖|服务器|内网|主机|面板|docker|pve|软路由|ai|agent|模型|gpt|claude|开发|代码|编程|github|设计|灵感|figma|阅读|文档|博客|影音|视频|音乐/i.test(l);
+  }
+
+  function linearFolderIconPaths(emoji, label = "") {
+    const e = String(emoji || "");
+    const l = String(label || "");
+    if (/🖥️|💻|🖧|🗄️|📡|🔌|🏠/u.test(e) || /nas|飞牛|群晖|服务器|内网|主机|面板|docker|pve|软路由/i.test(l)) {
+      return `<rect x="2.5" y="3.5" width="19" height="13" rx="2"/><path d="M8 20.5h8M12 16.5v4"/>`;
+    }
+    if (/🎬|📺|🎥|🍿|🎞️|🎵|🎧|🎮/u.test(e) || /影音|视频|音乐/i.test(l)) {
+      return `<rect x="2.5" y="4" width="19" height="16" rx="2.5"/><path d="m10 9 5 3-5 3V9z"/>`;
+    }
+    if (/🤖|🧠|✨|🪄|⚡|🔮/u.test(e) || /\b(?:ai|agent|gpt|claude)\b|模型/i.test(l)) {
+      return `<rect x="6" y="6" width="12" height="12" rx="2.5"/><path d="M9 2.5v3.5m6-3.5v3.5M9 18v3.5m6-3.5v3.5M2.5 9H6m-3.5 6H6m12-6h3.5M18 15h3.5"/>`;
+    }
+    if (/☁️|🌐|🔗|🚀|🛰️/u.test(e)) {
+      return `<path d="M17.5 19H7a4.5 4.5 0 0 1-.4-8.98A6 6 0 0 1 18.3 8.2a3.8 3.8 0 0 1-.8 7.5Z"/>`;
+    }
+    if (/🛠️|🔧|⚙️|🧰|🔨|🧪|📦/u.test(e) || /开发|代码|编程|github/i.test(l)) {
+      return `<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>`;
+    }
+    if (/📚|📖|📝|📄|🎓|📰/u.test(e) || /阅读|文档|博客/i.test(l)) {
+      return `<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>`;
+    }
+    if (/🎨|🖼️|💎|🌈|✏️/u.test(e) || /设计|灵感|figma/i.test(l)) {
+      return `<circle cx="12" cy="12" r="9"/><circle cx="8.5" cy="10.5" r="1"/><circle cx="12" cy="8" r="1"/><circle cx="15.5" cy="10.5" r="1"/><path d="M9 15.5c1.5 1.2 4.5 1.2 6 0"/>`;
+    }
+    return `<path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-6.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 4H5a2 2 0 0 0-2 2v1z"/>`;
+  }
+
+  function populateHeadingWithEmoji(element, rawText) {
+    element.replaceChildren();
+    const text = String(rawText || "");
+    const { emoji, label } = extractLeadingEmoji(text);
+    if (emoji && label && label !== emoji) {
+      element.classList.add("has-leading-emoji");
+      const emojiSpan = document.createElement("span");
+      emojiSpan.className = "heading-emoji";
+      emojiSpan.setAttribute("aria-hidden", "true");
+      emojiSpan.innerHTML = `<svg viewBox="0 0 24 24" class="heading-linear-icon" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${linearFolderIconPaths(emoji, label)}</svg>`;
+      const textSpan = document.createElement("span");
+      textSpan.className = "heading-label";
+      textSpan.textContent = label;
+      element.append(emojiSpan, textSpan);
+    } else {
+      element.classList.remove("has-leading-emoji");
+      element.textContent = text;
+    }
+  }
+
+  function extractMonogramInitial(rawTitle, rawUrl) {
+    const { label } = extractLeadingEmoji(String(rawTitle || "").trim());
+    const cleanTitle = (label || String(rawTitle || "")).trim();
+    const firstWordChar = cleanTitle.match(/[\p{Script=Han}\p{L}\p{N}]/u)?.[0];
+    if (firstWordChar) {
+      return /\p{Script=Han}/u.test(firstWordChar)
+        ? firstWordChar
+        : firstWordChar.toLocaleUpperCase();
+    }
+    const hostKey = hostOf(rawUrl).replace(/^(?:www\.)?/i, "");
+    const hostChar = hostKey.match(/[\p{L}\p{N}]/u)?.[0];
+    return hostChar ? hostChar.toLocaleUpperCase() : "•";
+  }
+
+  const FALLBACK_HUES = [142, 201, 272, 346, 38, 173, 232, 21];
+  function pickMorandiPaletteIndex(initialChar, title = "", hostKey = "") {
+    const ch = String(initialChar || "");
+    const t = String(title || "");
+    if (ch === "纯" || /kms|纯净/i.test(t)) return 0; // #dcfce7 + #15803d
+    if (ch === "中" || /铁塔/i.test(t)) return 1;     // #e0f2fe + #0369a1
+    const hueSeed = hostKey || t || ch;
+    let hash = 0;
+    for (let i = 0; i < hueSeed.length; i++) {
+      hash = ((hash << 5) - hash + hueSeed.charCodeAt(i)) | 0;
+    }
+    return Math.abs(hash) % MORANDI_PALETTE.length;
+  }
+
+  function morandiIndexFromRgb(r, g, b) {
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const delta = max - min;
+    if (delta < 16) return 1; // Neutral -> Mist Sky Blue
+    let hue = 0;
+    if (max === r) hue = ((g - b) / delta) % 6;
+    else if (max === g) hue = (b - r) / delta + 2;
+    else hue = (r - g) / delta + 4;
+    hue = Math.round(hue * 60);
+    if (hue < 0) hue += 360;
+    if (hue >= 80 && hue < 166) return 0;  // Mint Celadon (#dcfce7 / #15803d)
+    if (hue >= 166 && hue < 192) return 5; // Mineral Teal (#ccfbf1 / #0f766e)
+    if (hue >= 192 && hue < 228) return 1; // Mist Sky Blue (#e0f2fe / #0369a1)
+    if (hue >= 228 && hue < 258) return 6; // Periwinkle Indigo (#e0e7ff / #3730a3)
+    if (hue >= 258 && hue < 318) return 2; // Muted Lavender (#f3e8ff / #6b21a8)
+    if (hue >= 318 || hue < 16) return 3;  // Dusty Rose (#ffe4e6 / #be123c)
+    if (hue >= 16 && hue < 42) return 7;   // Soft Peach (#ffedd5 / #c2410c)
+    return 4;                              // Warm Amber (#fef3c7 / #b45309)
+  }
+
+  function applyMorandiVariables(wrapper, paletteIndex) {
+    const idx = ((paletteIndex % MORANDI_PALETTE.length) + MORANDI_PALETTE.length) % MORANDI_PALETTE.length;
+    const morandi = MORANDI_PALETTE[idx];
+    wrapper.style.setProperty("--fallback-hue", String(FALLBACK_HUES[idx]));
+    wrapper.style.setProperty("--monogram-bg-light", morandi.bgLight);
+    wrapper.style.setProperty("--monogram-fg-light", morandi.fgLight);
+    wrapper.style.setProperty("--monogram-border-light", morandi.borderLight);
+    wrapper.style.setProperty("--monogram-bg-dark", morandi.bgDark);
+    wrapper.style.setProperty("--monogram-fg-dark", morandi.fgDark);
+    wrapper.style.setProperty("--monogram-border-dark", morandi.borderDark);
+  }
+
+  function formatDomainPreviewHtml(text, queryTokens) {
+    const value = String(text || "");
+    const portMatch = value.match(/^([^/:]+)(:\d{1,5})((?:[/?#].*)?)$/);
+    if (!portMatch) {
+      return highlightMatch(value, queryTokens);
+    }
+    const [, hostPart, portPart, tailPart] = portMatch;
+    return `${highlightMatch(hostPart, queryTokens)}<span class="bookmark-domain-port">${highlightMatch(portPart, queryTokens)}</span>${tailPart ? highlightMatch(tailPart, queryTokens) : ""}`;
+  }
+
+  let chromeDefaultGlobePixels = null;
+  let chromeDefaultGlobePrimed = false;
+  function primeChromeDefaultGlobeSample() {
+    if (chromeDefaultGlobePrimed || !EXTENSION_MODE || !globalThis.chrome?.runtime?.getURL) return;
+    chromeDefaultGlobePrimed = true;
+    try {
+      const refUrl = new URL(chrome.runtime.getURL("/_favicon/"));
+      refUrl.searchParams.set("pageUrl", "https://markdock-missing-favicon.invalid/");
+      refUrl.searchParams.set("size", "32");
+      const img = new Image();
+      img.decoding = "async";
+      img.onload = () => {
+        try {
+          const size = 24;
+          const canvas = document.createElement("canvas");
+          canvas.width = size;
+          canvas.height = size;
+          const ctx = canvas.getContext("2d", { willReadFrequently: true });
+          if (!ctx) return;
+          ctx.drawImage(img, 0, 0, size, size);
+          chromeDefaultGlobePixels = ctx.getImageData(0, 0, size, size).data;
+        } catch { /* ignore */ }
+      };
+      img.src = refUrl.toString();
+    } catch { /* ignore */ }
   }
 
   function urlPathPreview(rawUrl, queryTokens) {
@@ -1129,8 +1314,19 @@
     return lookup;
   }
 
-  function adaptFaviconSurface(favicon, wrapper) {
+  function adaptFaviconSurface(favicon, wrapper, isChromeFaviconSource = false) {
+    primeChromeDefaultGlobeSample();
+    if (favicon?.dataset?.adaptedDataUrl === "1") {
+      delete favicon.dataset.adaptedDataUrl;
+      return true;
+    }
     delete wrapper.dataset.iconMark;
+    delete wrapper.dataset.iconSurface;
+    delete wrapper.dataset.iconContrast;
+    delete wrapper.dataset.iconMonogram;
+    delete wrapper.dataset.iconPadded;
+    delete wrapper.dataset.iconFullBleed;
+    wrapper.style.removeProperty("--monogram-mask");
     if (!favicon?.naturalWidth || !favicon.naturalHeight) {
       wrapper.dataset.iconContrast = "unknown";
       return true;
@@ -1140,8 +1336,27 @@
       || favicon.naturalWidth * favicon.naturalHeight > MAX_FAVICON_PIXELS) {
       return false;
     }
-    delete wrapper.dataset.iconSurface;
-    delete wrapper.dataset.iconContrast;
+    // Check if source is a synthetic SVG monogram (<text> inside data:image/svg+xml)
+    const srcStr = String(favicon.currentSrc || favicon.src || "");
+    if (/^data:image\/svg\+xml/i.test(srcStr)) {
+      try {
+        const commaIndex = srcStr.indexOf(",");
+        const rawPayload = commaIndex >= 0 ? srcStr.slice(commaIndex + 1) : "";
+        const svgText = /;base64,/i.test(srcStr)
+          ? decodeURIComponent(escape(atob(rawPayload)))
+          : decodeURIComponent(rawPayload);
+        const textMatch = svgText.match(/<text[^>]*>\s*([^<\s]{1,2})\s*<\/text>/i);
+        if (textMatch) {
+          const fallbackEl = wrapper.querySelector(".bookmark-favicon-fallback");
+          if (fallbackEl && textMatch[1]) {
+            fallbackEl.textContent = textMatch[1];
+            const pIdx = pickMorandiPaletteIndex(textMatch[1], textMatch[1]);
+            applyMorandiVariables(wrapper, pIdx);
+          }
+          return false;
+        }
+      } catch { /* ignore */ }
+    }
     try {
       const size = 24;
       const canvas = document.createElement("canvas");
@@ -1155,6 +1370,15 @@
       context.drawImage(favicon, 0, 0, size, size);
 
       const pixels = context.getImageData(0, 0, size, size).data;
+      if (isChromeFaviconSource && chromeDefaultGlobePixels && chromeDefaultGlobePixels.length === pixels.length) {
+        let diffSum = 0;
+        for (let i = 0; i < pixels.length; i++) {
+          diffSum += Math.abs(pixels[i] - chromeDefaultGlobePixels[i]);
+        }
+        if (diffSum / pixels.length < 3.5) {
+          return false;
+        }
+      }
       let transparentPixels = 0;
       let alphaMass = 0;
       let darkMass = 0;
@@ -1163,6 +1387,7 @@
       let neutralLightMass = 0;
       let nearBlackMass = 0;
       let nearWhiteMass = 0;
+      let maxChannelRange = 0;
       let cornerOpaqueMass = 0;
       let cornerLuminanceMass = 0;
       let cornerRelativeLuminanceMass = 0;
@@ -1172,6 +1397,10 @@
       let cornerSampleMass = 0;
       let cornerDarkMass = 0;
       let cornerLightMass = 0;
+      let minX = size;
+      let maxX = -1;
+      let minY = size;
+      let maxY = -1;
       const linearizeChannel = (channel) => {
         const value = channel / 255;
         return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
@@ -1186,15 +1415,24 @@
           transparentPixels++;
           continue;
         }
+        const pixel = i / 4;
+        const x = pixel % size;
+        const y = Math.floor(pixel / size);
+        if (alpha >= 0.15) {
+          if (x < minX) minX = x;
+          if (x > maxX) maxX = x;
+          if (y < minY) minY = y;
+          if (y > maxY) maxY = y;
+        }
         alphaMass += alpha;
         const luminance = 0.2126 * pixels[i] + 0.7152 * pixels[i + 1] + 0.0722 * pixels[i + 2];
         if (luminance < 128) darkMass += alpha;
         if (luminance > 220) lightMass += alpha;
         const channelRange = Math.max(pixels[i], pixels[i + 1], pixels[i + 2])
           - Math.min(pixels[i], pixels[i + 1], pixels[i + 2]);
-        const pixel = i / 4;
-        const x = pixel % size;
-        const y = Math.floor(pixel / size);
+        if (alpha > 0.25 && channelRange > maxChannelRange) {
+          maxChannelRange = channelRange;
+        }
         const inCorner = (x < 3 || x >= size - 3) && (y < 3 || y >= size - 3);
         if (inCorner && alpha > 0.78 && channelRange <= 34) {
           cornerOpaqueMass += alpha;
@@ -1208,17 +1446,9 @@
           if (luminance < 42) cornerDarkMass += alpha;
         }
         if (channelRange <= 30) {
-          // Include subdued gray marks too. Many browser favicons are rasterized
-          // with antialiasing that turns an otherwise white/black logo into a
-          // medium gray at 24px; the stricter cutoffs left those marks on the
-          // default pale tile in light mode.
           if (luminance < 128) neutralDarkMass += alpha;
           if (luminance > 164) neutralLightMass += alpha;
         }
-        // Transparent monochrome glyphs are not a dark/light *canvas*. Keep
-        // their ink tone separate so white marks can be recolored on light
-        // cards and black marks can be lifted on dark cards without touching
-        // colored brand artwork.
         if (channelRange <= 24 && Math.max(pixels[i], pixels[i + 1], pixels[i + 2]) < 28) {
           nearBlackMass += alpha;
         }
@@ -1230,9 +1460,6 @@
       const transparentRatio = transparentPixels / (size * size);
       if (!alphaMass) return false;
       if (transparentRatio > 0.98) {
-        // A small but valid mark can occupy very few pixels (for example a
-        // thin monogram). Keep it and add a contrasting surface instead of
-        // discarding it as an empty image.
         wrapper.dataset.iconContrast = "unknown";
         return true;
       }
@@ -1242,6 +1469,175 @@
       const neutralLightRatio = neutralLightMass / alphaMass;
       const nearBlackRatio = nearBlackMass / alphaMass;
       const nearWhiteRatio = nearWhiteMass / alphaMass;
+
+      // Chrome's /_favicon/ endpoint returns a default mid-gray wireframe globe
+      // when a site has no cached favicon. Reject that generic gray globe so
+      // the card displays the colorful Morandi Monogram Avatar instead.
+      if (isChromeFaviconSource
+        && maxChannelRange <= 8
+        && nearBlackRatio < 0.02
+        && nearWhiteRatio < 0.02
+        && transparentRatio > 0.25
+        && transparentRatio < 0.88) {
+        return false;
+      }
+
+      // Inspect tight bounding box [minX..maxX, minY..maxY] to detect:
+      // 1) Solid-colored square monogram tiles (e.g. green square with "纯" or blue square with "中"),
+      //    converting them into full-bleed 36x36 Morandi Monogram tiles (eliminating Box-in-Box).
+      // 2) Opaque near-black background tiles (e.g. "免费4K高清壁纸", "飞牛影视刮削"),
+      //    stripping the black box so Light Mode uses a cool slate (#94a3b8) surface instead of a black hole.
+      // 3) 16x16 icons padded with transparent margin by Chrome's /_favicon/?size=32.
+      const bw = maxX - minX + 1;
+      const bh = maxY - minY + 1;
+      if (bw >= 10 && bh >= 10 && Math.abs(bw - bh) <= 4) {
+        const rx0 = minX + 1;
+        const rx1 = maxX - 1;
+        const ry0 = minY + 1;
+        const ry1 = maxY - 1;
+        let ringTotal = 0;
+        let ringOpaque = 0;
+        let ringR = 0;
+        let ringG = 0;
+        let ringB = 0;
+        const ringSamples = [];
+        for (let y = ry0; y <= ry1; y++) {
+          for (let x = rx0; x <= rx1; x++) {
+            const onRing = x === rx0 || x === rx1 || y === ry0 || y === ry1;
+            if (!onRing) continue;
+            if ((x === rx0 || x === rx1) && (y === ry0 || y === ry1)) continue;
+            ringTotal++;
+            const idx = (y * size + x) * 4;
+            const a = pixels[idx + 3] / 255;
+            if (a > 0.72) {
+              ringOpaque++;
+              ringR += pixels[idx];
+              ringG += pixels[idx + 1];
+              ringB += pixels[idx + 2];
+              ringSamples.push([pixels[idx], pixels[idx + 1], pixels[idx + 2]]);
+            }
+          }
+        }
+        if (ringTotal > 0 && ringOpaque / ringTotal >= 0.72) {
+          const bgR = ringR / ringOpaque;
+          const bgG = ringG / ringOpaque;
+          const bgB = ringB / ringOpaque;
+          const bgLum = 0.2126 * bgR + 0.7152 * bgG + 0.0722 * bgB;
+          const bgChroma = Math.max(bgR, bgG, bgB) - Math.min(bgR, bgG, bgB);
+          let ringDevSum = 0;
+          for (const [sr, sg, sb] of ringSamples) {
+            ringDevSum += (Math.abs(sr - bgR) + Math.abs(sg - bgG) + Math.abs(sb - bgB)) / 3;
+          }
+          const avgRingDev = ringDevSum / ringSamples.length;
+
+          // Uniform solid square background detected
+          if (avgRingDev <= 24 && bgLum < 205) {
+            let innerTotal = 0;
+            let fgCount = 0;
+            let fgLumSum = 0;
+            let fgChromaSum = 0;
+            for (let y = ry0 + 1; y <= ry1 - 1; y++) {
+              for (let x = rx0 + 1; x <= rx1 - 1; x++) {
+                innerTotal++;
+                const idx = (y * size + x) * 4;
+                const r = pixels[idx];
+                const g = pixels[idx + 1];
+                const b = pixels[idx + 2];
+                const dist = (Math.abs(r - bgR) + Math.abs(g - bgG) + Math.abs(b - bgB)) / 3;
+                if (dist > 30) {
+                  fgCount++;
+                  fgLumSum += 0.2126 * r + 0.7152 * g + 0.0722 * b;
+                  fgChromaSum += Math.max(r, g, b) - Math.min(r, g, b);
+                }
+              }
+            }
+            const fgRatio = innerTotal > 0 ? fgCount / innerTotal : 0;
+            const fgMeanLum = fgCount > 0 ? fgLumSum / fgCount : 0;
+            const fgMeanChroma = fgCount > 0 ? fgChromaSum / fgCount : 0;
+
+            // Case 1: Solid-colored square with a white/light character monogram (e.g. "纯", "中")
+            if (bgChroma >= 18
+              && fgRatio >= 0.05
+              && fgRatio <= 0.72
+              && fgMeanLum > Math.max(bgLum + 32, 162)
+              && fgMeanChroma <= 52) {
+              const pIdx = morandiIndexFromRgb(bgR, bgG, bgB);
+              applyMorandiVariables(wrapper, pIdx);
+              const maskSize = 48;
+              const maskCanvas = document.createElement("canvas");
+              maskCanvas.width = maskSize;
+              maskCanvas.height = maskSize;
+              const mCtx = maskCanvas.getContext("2d", { willReadFrequently: true });
+              if (mCtx) {
+                const srcW = Math.max(1, ( favicon.naturalWidth || size ) * (bw / size));
+                const srcH = Math.max(1, ( favicon.naturalHeight || size ) * (bh / size));
+                const srcX = (favicon.naturalWidth || size) * (minX / size);
+                const srcY = (favicon.naturalHeight || size) * (minY / size);
+                mCtx.drawImage(favicon, srcX, srcY, srcW, srcH, 0, 0, maskSize, maskSize);
+                const mData = mCtx.getImageData(0, 0, maskSize, maskSize);
+                const md = mData.data;
+                const denom = Math.max(40, 250 - bgLum);
+                for (let k = 0; k < md.length; k += 4) {
+                  const a = md[k + 3] / 255;
+                  const lum = 0.2126 * md[k] + 0.7152 * md[k + 1] + 0.0722 * md[k + 2];
+                  const dist = (Math.abs(md[k] - bgR) + Math.abs(md[k + 1] - bgG) + Math.abs(md[k + 2] - bgB)) / 3;
+                  const lift = Math.max((lum - bgLum) / denom, (dist - 18) / 140);
+                  const maskAlpha = Math.max(0, Math.min(1, lift * a * 1.25));
+                  md[k] = 0;
+                  md[k + 1] = 0;
+                  md[k + 2] = 0;
+                  md[k + 3] = Math.round(maskAlpha * 255);
+                }
+                mCtx.putImageData(mData, 0, 0);
+                wrapper.style.setProperty("--monogram-mask", `url("${maskCanvas.toDataURL("image/png")}")`);
+                wrapper.dataset.iconMonogram = "true";
+                return true;
+              }
+            }
+
+            // Case 2: Opaque near-black background square (e.g. "免费4K高清壁纸", "飞牛影视刮削")
+            // Knock out the near-black background so Light Mode shows a cool slate gray (#94a3b8) tile instead of a black hole.
+            if (bgLum < 56 && bgChroma <= 34 && fgRatio >= 0.03) {
+              const outSize = Math.min(64, Math.max(32, favicon.naturalWidth || 32));
+              const outCanvas = document.createElement("canvas");
+              outCanvas.width = outSize;
+              outCanvas.height = outSize;
+              const outCtx = outCanvas.getContext("2d", { willReadFrequently: true });
+              if (outCtx) {
+                const srcW = Math.max(1, (favicon.naturalWidth || size) * (bw / size));
+                const srcH = Math.max(1, (favicon.naturalHeight || size) * (bh / size));
+                const srcX = (favicon.naturalWidth || size) * (minX / size);
+                const srcY = (favicon.naturalHeight || size) * (minY / size);
+                outCtx.drawImage(favicon, srcX, srcY, srcW, srcH, 0, 0, outSize, outSize);
+                const outImg = outCtx.getImageData(0, 0, outSize, outSize);
+                const od = outImg.data;
+                for (let k = 0; k < od.length; k += 4) {
+                  const r = od[k];
+                  const g = od[k + 1];
+                  const b = od[k + 2];
+                  const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+                  const ch = Math.max(r, g, b) - Math.min(r, g, b);
+                  const dist = (Math.abs(r - bgR) + Math.abs(g - bgG) + Math.abs(b - bgB)) / 3;
+                  if (lum < 62 && ch <= 36 && dist < 32) {
+                    const fade = Math.max(0, Math.min(1, (dist - 10) / 22));
+                    od[k + 3] = Math.round(od[k + 3] * fade);
+                  }
+                }
+                outCtx.putImageData(outImg, 0, 0);
+                wrapper.dataset.iconMark = "light";
+                favicon.dataset.adaptedDataUrl = "1";
+                favicon.src = outCanvas.toDataURL("image/png");
+                return true;
+              }
+            }
+          }
+        }
+      }
+
+      // Detect 16x16 icons padded with transparent margin by Chrome's /_favicon/?size=32
+      if (isChromeFaviconSource && minX >= 4 && maxX <= size - 5 && minY >= 4 && maxY <= size - 5) {
+        wrapper.dataset.iconPadded = "true";
+      }
 
       // Chrome's cached favicons often contain a transparent white or black
       // glyph (for example a monochrome GitHub mark). Treating that glyph as
@@ -1264,20 +1660,12 @@
           if (lightBackgroundRatio > 0.66) wrapper.dataset.iconSurface = "light";
           else if (darkBackgroundRatio > 0.66) wrapper.dataset.iconSurface = "dark";
         }
-        // A nearly monochrome mark that fills the image has no separate canvas
-        // to preserve, so give it a contrasting neutral tile on the other theme.
         if (!wrapper.dataset.iconSurface) {
           if (darkRatio > 0.92 && neutralDarkRatio > 0.88) wrapper.dataset.iconSurface = "light";
           else if (lightRatio > 0.92 && neutralLightRatio > 0.88) wrapper.dataset.iconSurface = "dark";
         }
-        // Solid mid-gray or mixed-color marks have no reliable intrinsic
-        // surface classification. Use a restrained neutral plate and outline.
         if (!wrapper.dataset.iconSurface) wrapper.dataset.iconContrast = "unknown";
 
-        // A pale canvas with almost no darker or saturated detail looks blank
-        // on the light theme even though its image request technically loaded.
-        // Prefer the readable letter fallback for that near-empty mark. Real
-        // white-backed logos with a visible dark or colored mark pass this test.
         if (wrapper.dataset.iconSurface === "light" && cornerSampleMass > 0
           && cornerLuminanceMass / cornerSampleMass > 210) {
           let distinctDetailMass = 0;
@@ -1307,18 +1695,15 @@
         }
         return true;
       }
-      if (darkRatio > 0.84 || neutralDarkRatio > 0.64) {
+      if ((darkRatio > 0.62 && lightRatio < 0.16) || neutralDarkRatio > 0.58) {
         wrapper.dataset.iconSurface = "light";
       } else if (lightRatio > 0.84 || neutralLightRatio > 0.64) {
         wrapper.dataset.iconSurface = "dark";
       } else if (Math.max(neutralDarkRatio, neutralLightRatio) > 0.3) {
-        // Monochrome marks with mixed light/dark pixels need a neutral plate too.
         wrapper.dataset.iconContrast = "unknown";
       }
       return true;
     } catch {
-      // Chrome's favicon service can taint the canvas. Outline the mark so
-      // transparent white or dark favicons remain visible in either theme.
       wrapper.dataset.iconContrast = "unknown";
       return true;
     }
@@ -1332,7 +1717,7 @@
       refs.themeToggle.title = label;
     }
     const meta = $("meta[name='theme-color']");
-    if (meta) meta.content = dark ? "#101014" : "#f4f4f6";
+    if (meta) meta.content = dark ? "#0b0c10" : "#f8fafc";
   }
 
   function toggleTheme() {
@@ -1705,15 +2090,18 @@
       state.activeTab = "all";
     }
 
-    refs.tabs.append(makeTopTab("all", "全部", state.items.length, "all"));
+    const topPinned = document.createElement("div");
+    topPinned.className = "nav-top-pinned";
+    topPinned.append(makeTopTab("all", "全部", state.items.length, "all"));
     const favoriteCount = state.items.filter((item) => item.favorite).length;
-    refs.tabs.append(makeTopTab("favorites", "收藏", favoriteCount, "favorites"));
+    topPinned.append(makeTopTab("favorites", "收藏", favoriteCount, "favorites"));
+    refs.tabs.append(topPinned);
 
     if (!tree.length) return;
     const divider = document.createElement("div");
     divider.className = "nav-section-label";
     divider.textContent = "文件夹";
-    refs.tabs.append(divider);
+    topPinned.append(divider);
 
     const treeWrap = document.createElement("div");
     treeWrap.className = "nav-tree";
@@ -1764,28 +2152,36 @@
       if (state.activeTab === node.id) select.setAttribute("aria-current", "page");
       select.title = node.path.join(" › ");
       const { emoji, label: cleanLabel } = extractLeadingEmoji(node.label);
-      let tabIconElement;
-      if (emoji) {
-        tabIconElement = document.createElement("span");
-        tabIconElement.className = "tab-icon nav-folder-emoji";
-        tabIconElement.textContent = emoji;
-        tabIconElement.setAttribute("aria-hidden", "true");
-      } else {
-        const folderIcon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-        folderIcon.setAttribute("class", "tab-icon nav-folder-icon");
-        folderIcon.setAttribute("viewBox", "0 0 24 24");
-        folderIcon.setAttribute("fill", "none");
-        folderIcon.setAttribute("stroke", "currentColor");
-        folderIcon.setAttribute("stroke-width", "1.6");
-        folderIcon.setAttribute("stroke-linecap", "round");
-        folderIcon.setAttribute("stroke-linejoin", "round");
-        folderIcon.setAttribute("aria-hidden", "true");
-        folderIcon.innerHTML = `<path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-6.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 4H5a2 2 0 0 0-2 2v1z"/>`;
-        tabIconElement = folderIcon;
+      const displayTitle = emoji ? (cleanLabel || node.label) : node.label;
+      const hasSemanticIcon = hasSemanticFolderIcon(emoji, displayTitle);
+      const monogramChar = extractMonogramInitial(displayTitle, "");
+      const paletteIndex = pickMorandiPaletteIndex(monogramChar, displayTitle, displayTitle);
+
+      const folderIcon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      folderIcon.setAttribute("class", "tab-icon nav-folder-icon");
+      folderIcon.setAttribute("viewBox", "0 0 24 24");
+      folderIcon.setAttribute("fill", "none");
+      folderIcon.setAttribute("stroke", "currentColor");
+      folderIcon.setAttribute("stroke-width", "1.6");
+      folderIcon.setAttribute("stroke-linecap", "round");
+      folderIcon.setAttribute("stroke-linejoin", "round");
+      folderIcon.setAttribute("aria-hidden", "true");
+      folderIcon.innerHTML = linearFolderIconPaths(emoji, displayTitle);
+      const tabIconElement = folderIcon;
+
+      if (!hasSemanticIcon && monogramChar) {
+        select.classList.add("has-dock-monogram");
+        applyMorandiVariables(select, paletteIndex);
+        const monogramBadge = document.createElement("span");
+        monogramBadge.className = "nav-folder-monogram";
+        monogramBadge.setAttribute("aria-hidden", "true");
+        monogramBadge.textContent = monogramChar;
+        select.append(monogramBadge);
       }
+
       const name = document.createElement("span");
       name.className = "tab-label";
-      name.textContent = emoji ? (cleanLabel || node.label) : node.label;
+      name.textContent = displayTitle;
       const badge = document.createElement("span");
       badge.className = "tab-count";
       badge.textContent = String(node.count);
@@ -1795,10 +2191,13 @@
 
       const folderInfo = {
         id: node.id,
-        title: emoji ? (cleanLabel || node.label) : node.label,
+        title: displayTitle,
         count: node.count,
         kind: "folder",
         emoji: emoji || null,
+        hasSemanticIcon,
+        monogramChar,
+        paletteIndex,
         children: node.children || [],
         node
       };
@@ -2043,10 +2442,11 @@
     refs.selectionMoveButton.disabled = selectedItems.length === 0;
     refs.selectionFavoriteButton.disabled = selectedItems.length === 0;
     refs.selectionDeleteButton.disabled = selectedItems.length === 0;
-    refs.selectionFavoriteButton.textContent = selectedItems.length
-      && selectedItems.every((item) => item.favorite)
+    const favLabel = selectedItems.length && selectedItems.every((item) => item.favorite)
       ? "取消收藏"
       : "加入收藏";
+    if (refs.selectionFavoriteLabel) refs.selectionFavoriteLabel.textContent = favLabel;
+    else refs.selectionFavoriteButton.textContent = favLabel;
     document.documentElement.dataset.selectionMode = String(state.selectionMode);
   }
 
@@ -2249,6 +2649,59 @@
     }
   }
 
+  function getActiveSearchEngine() {
+    return SEARCH_ENGINES[state.searchEngine] || SEARCH_ENGINES.google;
+  }
+
+  function syncSearchEngineUI() {
+    const engine = getActiveSearchEngine();
+    if (refs.webSearchBtnLabel) {
+      refs.webSearchBtnLabel.textContent = engine.label;
+    }
+    if (refs.webSearchBtn) {
+      refs.webSearchBtn.title = `使用 ${engine.name} 网页搜索 (Enter)`;
+      refs.webSearchBtn.setAttribute("aria-label", `使用 ${engine.name} 网页搜索`);
+    }
+    if (refs.hintWebSearchBtn) {
+      const q = state.query.trim();
+      refs.hintWebSearchBtn.textContent = q
+        ? `用 ${engine.name} 搜索“${q.length > 16 ? `${q.slice(0, 16)}…` : q}”`
+        : `${engine.name} 网页搜索`;
+    }
+    if (refs.searchEngineMenu) {
+      const checkSvg = `<svg viewBox="0 0 20 20" class="check-icon" aria-hidden="true"><path d="m4.5 10.2 3.5 3.4 7.5-7.4"/></svg>`;
+      refs.searchEngineMenu.querySelectorAll("[data-engine]").forEach((btn) => {
+        const isCurrent = btn.dataset.engine === state.searchEngine;
+        btn.classList.toggle("is-active", isCurrent);
+        btn.setAttribute("aria-checked", String(isCurrent));
+        btn.querySelector(".check-icon")?.remove();
+        if (isCurrent) {
+          btn.insertAdjacentHTML("beforeend", checkSvg);
+        }
+      });
+    }
+  }
+
+  async function openWebSearch(rawQuery = state.query) {
+    const query = String(rawQuery ?? "").trim();
+    if (!query) {
+      refs.search.focus({ preventScroll: true });
+      toast("请输入关键词后按回车或点击搜索按钮进行网页搜索");
+      return;
+    }
+    const engine = getActiveSearchEngine();
+    const targetUrl = `${engine.url}${encodeURIComponent(query)}`;
+    try {
+      if (EXTENSION_MODE && globalThis.chrome?.tabs?.create) {
+        await chrome.tabs.create({ url: targetUrl });
+      } else {
+        window.open(targetUrl, "_blank", "noopener,noreferrer");
+      }
+    } catch (error) {
+      toast(`打开网页搜索失败：${error?.message || "请重试"}`, true);
+    }
+  }
+
   function renderContentHeading(count) {
     const toolbar = document.createElement("div");
     toolbar.className = "content-heading";
@@ -2262,34 +2715,53 @@
     const path = selectedNavigationPath();
 
     if (state.query.trim()) {
-      title.textContent = "搜索结果";
+      populateHeadingWithEmoji(title, "搜索结果");
       caption.textContent = `匹配到 ${count} 个书签`;
     } else if (state.activeTab === "favorites") {
-      title.textContent = "收藏";
+      populateHeadingWithEmoji(title, "收藏");
       caption.textContent = `${count} 个常用网址`;
     } else if (path?.length) {
-      title.textContent = path.at(-1);
+      populateHeadingWithEmoji(title, path.at(-1));
       const hasChildFolders = Boolean(navigationNodeAtPath(path)?.children.length);
       caption.textContent = hasChildFolders
         ? `${count} 个书签 · 包含子文件夹`
         : `${count} 个书签`;
-      const breadcrumb = document.createElement("div");
-      breadcrumb.className = "content-breadcrumb";
-      for (const [index, part] of path.entries()) {
-        if (index) {
-          const separator = document.createElement("span");
-          separator.className = "breadcrumb-separator";
-          separator.setAttribute("aria-hidden", "true");
-          separator.textContent = "›";
-          breadcrumb.append(separator);
+      if (path.length > 1) {
+        const breadcrumb = document.createElement("nav");
+        breadcrumb.className = "content-breadcrumb";
+        breadcrumb.setAttribute("aria-label", "文件夹路径");
+        for (const [index, part] of path.entries()) {
+          if (index) {
+            const separator = document.createElement("span");
+            separator.className = "breadcrumb-separator";
+            separator.setAttribute("aria-hidden", "true");
+            separator.textContent = "›";
+            breadcrumb.append(separator);
+          }
+          const { emoji: bEmoji, label: bLabel } = extractLeadingEmoji(part);
+          const formattedPart = bEmoji && bLabel ? `${bEmoji} ${bLabel}` : part;
+          if (index < path.length - 1) {
+            const ancestorPath = path.slice(0, index + 1);
+            const segmentBtn = document.createElement("button");
+            segmentBtn.type = "button";
+            segmentBtn.className = "breadcrumb-link";
+            segmentBtn.textContent = formattedPart;
+            segmentBtn.addEventListener("click", () => {
+              const ancestorNode = navigationNodeAtPath(ancestorPath);
+              if (ancestorNode) selectNavigationTab(ancestorNode.id, ancestorNode);
+            });
+            breadcrumb.append(segmentBtn);
+          } else {
+            const segment = document.createElement("span");
+            segment.className = "breadcrumb-current";
+            segment.textContent = formattedPart;
+            breadcrumb.append(segment);
+          }
         }
-        const segment = document.createElement("span");
-        segment.textContent = part;
-        breadcrumb.append(segment);
+        copy.append(breadcrumb);
       }
-      copy.append(breadcrumb);
     } else {
-      title.textContent = "全部书签";
+      populateHeadingWithEmoji(title, "全部书签");
       const countBadge = document.createElement("span");
       countBadge.className = "content-heading-count";
       countBadge.textContent = String(count);
@@ -2341,6 +2813,7 @@
       event.stopPropagation();
       const open = sortMenu.hidden;
       $$(".view-settings-menu").forEach((m) => { m.hidden = true; });
+      $$(".view-settings-button").forEach((b) => b.setAttribute("aria-expanded", "false"));
       sortMenu.hidden = !open;
       sortButton.setAttribute("aria-expanded", String(open));
     });
@@ -2355,86 +2828,36 @@
 
     sortWrap.append(sortButton, sortMenu);
 
-    const viewSettingsWrap = document.createElement("div");
-    viewSettingsWrap.className = "view-settings-wrap";
-
-    const viewSettingsButton = document.createElement("button");
-    viewSettingsButton.type = "button";
-    viewSettingsButton.className = "view-settings-button";
-    viewSettingsButton.setAttribute("aria-haspopup", "true");
-    viewSettingsButton.setAttribute("aria-expanded", "false");
-    viewSettingsButton.title = "视图与卡片密度设置";
-    const currentViewIcon = state.viewMode === "grid"
-      ? `<svg viewBox="0 0 24 24" class="view-btn-icon" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.3"/><rect x="14" y="3" width="7" height="7" rx="1.3"/><rect x="3" y="14" width="7" height="7" rx="1.3"/><rect x="14" y="14" width="7" height="7" rx="1.3"/></svg>`
-      : `<svg viewBox="0 0 24 24" class="view-btn-icon" aria-hidden="true"><path d="M9 6h12M9 12h12M9 18h12M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg>`;
-    const viewModeLabel = state.viewMode === "grid" ? "网格" : "列表";
-    const densityModeLabel = state.densityMode === "compact" ? "紧凑" : "舒适";
-    viewSettingsButton.innerHTML = `${currentViewIcon}<span>${viewModeLabel} · ${densityModeLabel}</span><svg viewBox="0 0 20 20" class="view-chevron" aria-hidden="true"><path d="m5 7.5 5 5 5-5"/></svg>`;
-
-    const viewMenu = document.createElement("div");
-    viewMenu.className = "view-settings-menu";
-    viewMenu.hidden = true;
-
-    viewMenu.innerHTML = `
-      <div class="view-menu-group-label">布局方式</div>
-      <button type="button" class="view-menu-item${state.viewMode === "grid" ? " is-active" : ""}" data-view="grid">
-        <svg viewBox="0 0 24 24" class="menu-icon" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.3"/><rect x="14" y="3" width="7" height="7" rx="1.3"/><rect x="3" y="14" width="7" height="7" rx="1.3"/><rect x="14" y="14" width="7" height="7" rx="1.3"/></svg>
-        <span>网格视图</span>
-        ${state.viewMode === "grid" ? checkSvg : ""}
+    const viewToggleGroup = document.createElement("div");
+    viewToggleGroup.className = "view-mode-segmented";
+    viewToggleGroup.setAttribute("role", "group");
+    viewToggleGroup.setAttribute("aria-label", "切换视图布局");
+    viewToggleGroup.innerHTML = `
+      <button type="button" class="view-segment-btn${state.viewMode === "grid" ? " is-active" : ""}" data-view="grid" aria-pressed="${state.viewMode === "grid"}" title="网格视图">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.3"/><rect x="14" y="3" width="7" height="7" rx="1.3"/><rect x="3" y="14" width="7" height="7" rx="1.3"/><rect x="14" y="14" width="7" height="7" rx="1.3"/></svg>
       </button>
-      <button type="button" class="view-menu-item${state.viewMode === "list" ? " is-active" : ""}" data-view="list">
-        <svg viewBox="0 0 24 24" class="menu-icon" aria-hidden="true"><path d="M9 6h12M9 12h12M9 18h12M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg>
-        <span>列表视图</span>
-        ${state.viewMode === "list" ? checkSvg : ""}
-      </button>
-      <div class="view-menu-divider"></div>
-      <div class="view-menu-group-label">显示密度</div>
-      <button type="button" class="view-menu-item${state.densityMode === "comfortable" ? " is-active" : ""}" data-density="comfortable">
-        <svg viewBox="0 0 24 24" class="menu-icon" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/></svg>
-        <span>舒适间距</span>
-        ${state.densityMode === "comfortable" ? checkSvg : ""}
-      </button>
-      <button type="button" class="view-menu-item${state.densityMode === "compact" ? " is-active" : ""}" data-density="compact">
-        <svg viewBox="0 0 24 24" class="menu-icon" aria-hidden="true"><rect x="3" y="6" width="18" height="5" rx="1.5"/><rect x="3" y="13" width="18" height="5" rx="1.5"/></svg>
-        <span>紧凑间距</span>
-        ${state.densityMode === "compact" ? checkSvg : ""}
+      <button type="button" class="view-segment-btn${state.viewMode === "list" ? " is-active" : ""}" data-view="list" aria-pressed="${state.viewMode === "list"}" title="列表视图">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h12M9 12h12M9 18h12M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg>
       </button>
     `;
-
-    viewSettingsButton.addEventListener("click", (event) => {
-      event.stopPropagation();
-      const open = viewMenu.hidden;
-      $$(".view-settings-menu").forEach((m) => { m.hidden = true; });
-      viewMenu.hidden = !open;
-      viewSettingsButton.setAttribute("aria-expanded", String(open));
-    });
-
-    viewMenu.querySelectorAll("[data-view]").forEach((btn) => {
+    viewToggleGroup.querySelectorAll("[data-view]").forEach((btn) => {
       btn.addEventListener("click", () => {
+        if (state.viewMode === btn.dataset.view) return;
         state.viewMode = btn.dataset.view;
         saveViewPreferences();
         render({ refreshNavigation: false });
       });
     });
 
-    viewMenu.querySelectorAll("[data-density]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        state.densityMode = btn.dataset.density;
-        saveViewPreferences();
-        render({ refreshNavigation: false });
-      });
-    });
-
-    viewSettingsWrap.append(viewSettingsButton, viewMenu);
-
     const selectionToggle = document.createElement("button");
     selectionToggle.type = "button";
     selectionToggle.className = `selection-mode-toggle${state.selectionMode ? " is-active" : ""}`;
     selectionToggle.setAttribute("aria-pressed", String(state.selectionMode));
+    selectionToggle.title = "批量选择书签 (S)";
     selectionToggle.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="m8 12 2.5 2.5L16 9"/></svg><span>${state.selectionMode ? "完成" : "选择"}</span>`;
     selectionToggle.addEventListener("click", () => setSelectionMode(!state.selectionMode));
 
-    tools.append(sortWrap, viewSettingsWrap, selectionToggle);
+    tools.append(sortWrap, viewToggleGroup, selectionToggle);
     toolbar.append(copy, tools);
     return toolbar;
   }
@@ -2449,10 +2872,10 @@
   }
 
   function renderBookmarkResults(filtered, visible, queryTokens) {
+    const selectedPath = state.query.trim() ? null : selectedNavigationPath();
     // Preserve a deliberate global order when the user has selected a sort.
     if (state.sortMode !== "default") return createBookmarkGrid(visible, queryTokens, selectedPath);
 
-    const selectedPath = state.query.trim() ? null : selectedNavigationPath();
     const groupingDepth = selectedPath?.length ? selectedPath.length + 1 : 1;
     const getGroupPath = (item) => {
       const itemPath = getNavigationPath(item);
@@ -2487,9 +2910,10 @@
       heading.className = "bookmark-group-heading";
       heading.title = `${group.path.join(" › ")}（可拖拽书签至此分组）`;
       const label = document.createElement("h3");
-      label.textContent = selectedPath && JSON.stringify(group.path) === JSON.stringify(selectedPath)
+      const groupHeadingText = selectedPath && JSON.stringify(group.path) === JSON.stringify(selectedPath)
         ? "当前文件夹"
         : group.path.at(-1) || "未分类";
+      populateHeadingWithEmoji(label, groupHeadingText);
       const count = document.createElement("span");
       count.className = "bookmark-group-count";
       const countNum = group.visibleItems.length < group.totalCount
@@ -2583,12 +3007,26 @@
     if (refs.syncNowButton) refs.syncNowButton.hidden = !EXTENSION_MODE;
 
     const rawQuery = state.query.trim();
+    syncSearchEngineUI();
+    if (refs.searchBox) {
+      refs.searchBox.classList.toggle("has-query", Boolean(rawQuery));
+    }
+    if (refs.searchShortcutKbd) {
+      refs.searchShortcutKbd.hidden = Boolean(rawQuery);
+    }
+    if (refs.searchWebControls) {
+      refs.searchWebControls.hidden = !rawQuery;
+    }
     if (rawQuery) {
       refs.searchHintBar.hidden = false;
       refs.searchClear.hidden = false;
     } else {
       refs.searchHintBar.hidden = true;
       refs.searchClear.hidden = true;
+      if (refs.searchEngineMenu) {
+        refs.searchEngineMenu.hidden = true;
+        refs.searchEngineBtn?.setAttribute("aria-expanded", "false");
+      }
     }
 
     const filtered = filteredItems();
@@ -2790,11 +3228,11 @@
     favicon.referrerPolicy = "no-referrer";
     const initials = document.createElement("span");
     initials.className = "bookmark-favicon-fallback";
-    const titleInitial = [...(item.title || "•").trim()][0] || "•";
-    const domainInitial = [...hostOf(item.url).replace(/^(?:www\.)?/i, "")][0] || titleInitial;
-    initials.textContent = /\p{Script=Han}/u.test(titleInitial)
-      ? titleInitial
-      : domainInitial.toLocaleUpperCase();
+    const hostKey = hostOf(item.url).replace(/^(?:www\.)?/i, "");
+    const monogramText = extractMonogramInitial(item.title, item.url);
+    initials.textContent = monogramText;
+    const paletteIndex = pickMorandiPaletteIndex(monogramText, hostKey || item.title || "");
+    applyMorandiVariables(faviconWrap, paletteIndex);
     let chromeFavicon = "";
     const pageUrl = webPageUrl(item.url);
     if (EXTENSION_MODE && pageUrl && globalThis.chrome?.runtime?.getURL) {
@@ -2868,7 +3306,8 @@
     };
 
     favicon.addEventListener("load", () => {
-      if (adaptFaviconSurface(favicon, faviconWrap)) {
+      const isChromeSource = Boolean(chromeFavicon && currentIconSource === chromeFavicon);
+      if (adaptFaviconSurface(favicon, faviconWrap, isChromeSource)) {
         lastGoodIconSource = currentIconSource;
         faviconWrap.classList.remove("is-loading", "has-fallback");
         if (currentIconSource === chromeFavicon || currentIconSource === savedIcon) {
@@ -2895,6 +3334,7 @@
     const textWrap = document.createElement("span");
     textWrap.className = "bookmark-text bookmark-main";
 
+    const isFavoritesView = state.activeTab === "favorites";
     const titleRow = document.createElement("span");
     titleRow.className = "bookmark-title-row";
 
@@ -2902,6 +3342,16 @@
     title.className = "bookmark-title";
     title.innerHTML = highlightMatch(formattedTitle, queryTokens);
     titleRow.append(title);
+
+    if (item.favorite && !isFavoritesView) {
+      const favBadge = document.createElement("span");
+      favBadge.className = "bookmark-fav-badge";
+      favBadge.setAttribute("aria-hidden", "true");
+      favBadge.title = "已收藏";
+      favBadge.innerHTML = `<svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="currentColor"/></svg>`;
+      titleRow.append(favBadge);
+    }
+    textWrap.append(titleRow);
 
     const navPath = getNavigationPath(item);
     let subSegments = [];
@@ -2926,6 +3376,15 @@
       }
     }
 
+    const domainLine = document.createElement("span");
+    domainLine.className = "bookmark-domain-line";
+    const domain = document.createElement("span");
+    domain.className = "bookmark-domain";
+    domain.innerHTML = openableUrl
+      ? formatDomainPreviewHtml(urlPathPreview(item.url, queryTokens), queryTokens)
+      : highlightMatch(restrictedBookmarkLabel(item.url), queryTokens);
+    domainLine.append(domain);
+
     if (subSegments.length > 0) {
       const context = document.createElement("span");
       context.className = "bookmark-context";
@@ -2935,26 +3394,14 @@
       });
       context.textContent = formattedSegments.join(" › ");
       context.title = navPath.join(" › ");
-      titleRow.append(context);
+      domainLine.append(context);
     }
-    textWrap.append(titleRow);
-
-    const domainLine = document.createElement("span");
-    domainLine.className = "bookmark-domain-line";
-    const domain = document.createElement("span");
-    domain.className = "bookmark-domain";
-    domain.innerHTML = highlightMatch(openableUrl
-      ? urlPathPreview(item.url, queryTokens)
-      : restrictedBookmarkLabel(item.url), queryTokens);
-    domainLine.append(domain);
 
     textWrap.append(domainLine);
     link.append(faviconWrap, textWrap);
 
-    // Row Actions - In favorites view, hide persistent star to reduce visual noise; reveal on hover
-    const isFavoritesView = state.activeTab === "favorites";
     const actions = document.createElement("span");
-    actions.className = `bookmark-actions${item.favorite && !isFavoritesView ? " favorite-always" : ""}`;
+    actions.className = "bookmark-actions";
 
     const copyBtn = document.createElement("button");
     copyBtn.type = "button";
@@ -3081,37 +3528,53 @@
       paragraph.textContent = "当前列表将在导入完成后自动更新。";
       button.textContent = "等待导入完成";
       button.disabled = true;
+      wrap.append(symbol, heading, paragraph, button);
     } else if (EXTENSION_MODE && state.chromeSyncStatus === "loading") {
       heading.textContent = `正在读取${BOOKMARK_TERM}`;
       paragraph.textContent = "首次读取或包含大量书签时可能需要几秒钟。";
       button.textContent = `添加${BOOKMARK_TERM}`;
       button.addEventListener("click", () => openDialog());
+      wrap.append(symbol, heading, paragraph, button);
     } else if (EXTENSION_MODE && state.chromeSyncStatus === "error") {
       heading.textContent = `${BOOKMARK_TERM}读取失败`;
       paragraph.textContent = "请在扩展管理中确认已授予访问权限，然后点击重试。";
       button.textContent = "重新同步";
       button.addEventListener("click", syncChromeBookmarks);
+      wrap.append(symbol, heading, paragraph, button);
     } else if (state.query) {
+      const engine = getActiveSearchEngine();
+      const q = state.query.trim();
       heading.textContent = "没有找到匹配的书签";
-      paragraph.textContent = "请尝试缩短搜索词或检查拼写，也可点击下方按钮清空搜索。";
-      button.textContent = "清空搜索条件";
-      button.addEventListener("click", () => {
+      paragraph.textContent = `本地书签库未匹配到“${q}”，你可以直接使用 ${engine.name} 在网络上搜索，或清空当前筛选。`;
+      const actionRow = document.createElement("div");
+      actionRow.className = "empty-state-actions";
+      button.textContent = `使用 ${engine.name} 搜索“${q.length > 18 ? `${q.slice(0, 18)}…` : q}”`;
+      button.addEventListener("click", () => openWebSearch(q));
+      const clearBtn = document.createElement("button");
+      clearBtn.type = "button";
+      clearBtn.className = "button button-quiet";
+      clearBtn.textContent = "清空搜索条件";
+      clearBtn.addEventListener("click", () => {
         refs.search.value = "";
         state.query = "";
         refs.searchClear.hidden = true;
         render({ refreshNavigation: false });
       });
+      actionRow.append(button, clearBtn);
+      wrap.append(symbol, heading, paragraph, actionRow);
     } else if (state.activeTab === "favorites") {
       heading.textContent = "还没有收藏任何书签";
       paragraph.textContent = "点击任意书签右侧的星标按钮，常用网站就会收纳到这里。";
       button.textContent = "浏览全部书签";
       button.addEventListener("click", () => { state.activeTab = "all"; render(); });
+      wrap.append(symbol, heading, paragraph, button);
     } else if (selectedNavigationPath()?.length) {
       const path = selectedNavigationPath();
       heading.textContent = "这个文件夹还没有书签";
       paragraph.textContent = `向「${path.at(-1)}」添加书签，之后会显示在这里。`;
       button.textContent = "添加到此文件夹";
       button.addEventListener("click", () => openDialog());
+      wrap.append(symbol, heading, paragraph, button);
     } else {
       heading.textContent = "给书签一个清爽的归宿";
       paragraph.textContent = EXTENSION_MODE
@@ -3119,8 +3582,8 @@
         : "导入浏览器导出的 HTML 书签文件，或手动添加第一个书签。";
       button.textContent = EXTENSION_MODE ? "添加书签" : "导入书签";
       button.addEventListener("click", EXTENSION_MODE ? () => openDialog() : chooseFile);
+      wrap.append(symbol, heading, paragraph, button);
     }
-    wrap.append(symbol, heading, paragraph, button);
     refs.content.append(wrap);
   }
 
@@ -4587,12 +5050,16 @@
 
     const iconSpan = document.createElement("span");
     iconSpan.className = "dock-flyout-icon";
-    if (info.emoji) {
-      iconSpan.textContent = info.emoji;
+    if (info.emoji || info.hasSemanticIcon) {
+      iconSpan.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${linearFolderIconPaths(info.emoji, info.title)}</svg>`;
     } else if (info.kind === "all") {
       iconSpan.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>`;
     } else if (info.kind === "favorites") {
       iconSpan.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`;
+    } else if (info.monogramChar) {
+      iconSpan.classList.add("is-monogram");
+      applyMorandiVariables(iconSpan, info.paletteIndex ?? 0);
+      iconSpan.textContent = info.monogramChar;
     } else {
       iconSpan.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-6.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 4H5a2 2 0 0 0-2 2v1z"/></svg>`;
     }
@@ -4634,7 +5101,7 @@
         const cIcon = document.createElement("span");
         cIcon.className = "dock-flyout-child-icon";
         if (cEmoji) {
-          cIcon.textContent = cEmoji;
+          cIcon.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${linearFolderIconPaths(cEmoji, cLabel || child.label)}</svg>`;
         } else {
           cIcon.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-6.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 4H5a2 2 0 0 0-2 2v1z"/></svg>`;
         }
@@ -4685,19 +5152,22 @@
     refs.contextMenu.querySelectorAll('[data-menu-kind="bookmark"]').forEach((entry) => { entry.hidden = false; });
     refs.contextMenu.querySelectorAll('[data-menu-kind="folder"]').forEach((entry) => { entry.hidden = true; });
     const openable = Boolean(safeUrl(item.url));
-    refs.contextMenu.querySelectorAll('[data-action="open"], [data-action="open-window"]').forEach((entry) => {
+    refs.contextMenu.querySelectorAll('[data-action="open"], [data-action="open-window"], [data-action="open-incognito"]').forEach((entry) => {
       entry.hidden = !openable;
     });
-    refs.contextMenu.querySelector('[data-menu-kind="bookmark"].menu-divider').hidden = !openable;
+    const firstDivider = refs.contextMenu.querySelector('[data-menu-kind="bookmark"].menu-divider');
+    if (firstDivider) firstDivider.hidden = !openable;
     contextMenuReturnFocus = returnFocus;
     state.contextItemId = item.id;
-    refs.contextFavoriteLabel.textContent = item.favorite ? "取消收藏" : "加入收藏";
+    if (refs.contextFavoriteLabel) {
+      refs.contextFavoriteLabel.textContent = item.favorite ? "取消收藏" : "加入收藏";
+    }
     refs.contextMenu.hidden = false;
     const menuWidth = refs.contextMenu.offsetWidth || 184;
     const menuHeight = refs.contextMenu.offsetHeight || 220;
     refs.contextMenu.style.left = `${Math.max(8, Math.min(x, innerWidth - menuWidth - 8))}px`;
     refs.contextMenu.style.top = `${Math.max(8, Math.min(y, innerHeight - menuHeight - 8))}px`;
-    refs.contextMenu.querySelector("button")?.focus({ preventScroll: true });
+    refs.contextMenu.querySelector("button:not([hidden])")?.focus({ preventScroll: true });
   }
 
   function canRenameChromeFolder(folderId) {
@@ -5999,7 +6469,8 @@
       detail.textContent = option.detail;
       text.append(label, detail);
       const enter = document.createElement("kbd");
-      enter.textContent = "↵";
+      enter.className = "command-result-kbd";
+      enter.textContent = option.kind === "bookmark" ? "↵ 打开" : (option.kind === "domain" ? "↵ 筛选" : "↵ 执行");
       button.append(mark, text, enter);
       button.addEventListener("mouseenter", () => {
         commandActiveIndex = index;
@@ -6162,7 +6633,11 @@
     else toast("正在导入或同步，完成后页面会自动更新。");
   });
 
-  // Shortcuts dialog
+  // Command Palette & Shortcuts dialog
+  refs.commandPaletteButton?.addEventListener("click", () => {
+    closeActionsMenu();
+    openCommandPalette();
+  });
   refs.shortcutsButton?.addEventListener("click", () => {
     rememberDialogFocus(refs.shortcutsDialog, refs.shortcutsButton);
     closeActionsMenu();
@@ -6178,6 +6653,27 @@
     refs.shortcutsDialog.showModal();
   });
 
+  // Density segmented control inside Appearance Dialog
+  function syncAppearanceDensityUI() {
+    $$("[data-density-option]").forEach((btn) => {
+      const active = btn.dataset.densityOption === state.densityMode;
+      btn.classList.toggle("is-active", active);
+      btn.setAttribute("aria-pressed", String(active));
+    });
+  }
+  $$("[data-density-option]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const mode = btn.dataset.densityOption;
+      if (!["comfortable", "compact"].includes(mode) || state.densityMode === mode) return;
+      state.densityMode = mode;
+      saveViewPreferences();
+      syncAppearanceDensityUI();
+      render({ refreshNavigation: false });
+    });
+  });
+  window.addEventListener("qidian:appearanceopen", syncAppearanceDensityUI);
+  syncAppearanceDensityUI();
+
   refs.themeToggle.addEventListener("click", toggleTheme);
   refs.importButton.addEventListener("click", () => {
     closeActionsMenu();
@@ -6186,18 +6682,34 @@
   refs.demoImportButton.addEventListener("click", chooseFile);
   refs.file.addEventListener("change", importFile);
 
-  // Search input & clear button
+  // Search input, clear button & direct web search
+  syncSearchEngineUI();
   refs.search.closest(".search-box")?.addEventListener("click", (event) => {
-    if (event.target.closest("button")) return;
+    if (event.target.closest("button") || event.target.closest(".search-engine-menu")) return;
     refs.search.focus({ preventScroll: true });
   });
   refs.search.addEventListener("input", () => {
     state.query = refs.search.value;
+    const hasQuery = Boolean(state.query.trim());
+    refs.searchBox?.classList.toggle("has-query", hasQuery);
+    if (refs.searchShortcutKbd) refs.searchShortcutKbd.hidden = hasQuery;
+    if (refs.searchWebControls) refs.searchWebControls.hidden = !hasQuery;
+    refs.searchClear.hidden = !hasQuery;
     state.limit = PAGE_SIZE;
     scheduleSearchRender();
   });
   refs.search.addEventListener("keydown", (event) => {
-    if (event.key !== "ArrowDown" || event.isComposing) return;
+    if (event.isComposing) return;
+    if (event.key === "Enter") {
+      const q = refs.search.value.trim();
+      if (q) {
+        event.preventDefault();
+        event.stopPropagation();
+        openWebSearch(q);
+      }
+      return;
+    }
+    if (event.key !== "ArrowDown") return;
     flushSearchRender();
     const rows = [...$$(".bookmark")].filter((row) => row.getClientRects().length > 0);
     if (!rows.length) return;
@@ -6205,10 +6717,42 @@
     event.stopPropagation();
     focusBookmarkRow(0, rows);
   });
+  refs.webSearchBtn?.addEventListener("click", (event) => {
+    event.stopPropagation();
+    openWebSearch(refs.search.value);
+  });
+  refs.hintWebSearchBtn?.addEventListener("click", () => {
+    openWebSearch(refs.search.value);
+  });
+  refs.searchEngineBtn?.addEventListener("click", (event) => {
+    event.stopPropagation();
+    if (!refs.searchEngineMenu) return;
+    const isHidden = refs.searchEngineMenu.hidden;
+    refs.searchEngineMenu.hidden = !isHidden;
+    refs.searchEngineBtn.setAttribute("aria-expanded", String(isHidden));
+  });
+  refs.searchEngineMenu?.addEventListener("click", (event) => {
+    event.stopPropagation();
+    const option = event.target.closest("[data-engine], [data-search-engine]");
+    if (!option) return;
+    const nextId = option.dataset.engine || option.dataset.searchEngine;
+    if (SEARCH_ENGINES[nextId]) {
+      state.searchEngine = nextId;
+      try { localStorage.setItem(SEARCH_ENGINE_KEY, nextId); } catch {}
+      syncSearchEngineUI();
+    }
+    refs.searchEngineMenu.hidden = true;
+    refs.searchEngineBtn?.setAttribute("aria-expanded", "false");
+    refs.search.focus({ preventScroll: true });
+  });
   refs.searchClear.addEventListener("click", () => {
     refs.search.value = "";
     state.query = "";
     refs.searchClear.hidden = true;
+    if (refs.searchEngineMenu) {
+      refs.searchEngineMenu.hidden = true;
+      refs.searchEngineBtn?.setAttribute("aria-expanded", "false");
+    }
     render({ refreshNavigation: false });
     refs.search.focus();
   });
@@ -6413,6 +6957,24 @@
         toast(`打开窗口失败：${error?.message || "浏览器未能创建新窗口"}`, true);
         restoreBookmarkContextFocus();
       }
+    } else if (action === "open-incognito") {
+      const url = safeUrl(item.url);
+      if (!url) {
+        toast(restrictedBookmarkMessage(item.url));
+        restoreBookmarkContextFocus();
+        return;
+      }
+      try {
+        if (EXTENSION_MODE && chrome.windows) {
+          await chrome.windows.create({ url, incognito: true });
+        } else {
+          window.open(url, "_blank", "noopener,noreferrer");
+          toast("当前环境无法直接创建隐身窗口，已在新标签页打开");
+        }
+      } catch (error) {
+        toast("请在扩展管理页开启「在无痕模式下启用」权限以打开隐身窗口", true);
+        restoreBookmarkContextFocus();
+      }
     } else if (action === "copy-url") {
       try {
         await navigator.clipboard.writeText(item.url);
@@ -6486,6 +7048,10 @@
     if (!event.target.closest(".actions-wrap")) closeActionsMenu();
     if (!event.target.closest("#contextMenu") && !event.target.closest(".bookmark-actions") && !event.target.closest(".nav-more")) {
       hideContextMenu();
+    }
+    if (refs.searchEngineMenu && !refs.searchEngineMenu.hidden && !event.target.closest("#searchWebControls") && !event.target.closest("#searchEngineMenu")) {
+      refs.searchEngineMenu.hidden = true;
+      refs.searchEngineBtn?.setAttribute("aria-expanded", "false");
     }
     $$(".view-settings-wrap").forEach((wrap) => {
       if (!wrap.contains(event.target)) {
@@ -6591,8 +7157,14 @@
         return;
       }
       let closedInlineMenu = false;
+      if (refs.searchEngineMenu && !refs.searchEngineMenu.hidden) {
+        refs.searchEngineMenu.hidden = true;
+        refs.searchEngineBtn?.setAttribute("aria-expanded", "false");
+        closedInlineMenu = true;
+      }
       $$(".view-settings-menu:not([hidden]), .sort-settings-menu:not([hidden])").forEach((menu) => {
         menu.hidden = true;
+        menu.parentElement?.querySelector(".view-settings-button, .sort-settings-button")?.setAttribute("aria-expanded", "false");
         closedInlineMenu = true;
       });
       const hadOpenMenu = closedInlineMenu || !refs.exportMenu.hidden || !refs.actionsMenu.hidden || !refs.contextMenu.hidden;
@@ -6607,6 +7179,10 @@
       }
       hideContextMenu({ restoreFocus: true });
       hideBookmarkTooltip();
+      if (!hadOpenMenu && !dialogOpen && state.selectionMode) {
+        clearBookmarkSelection();
+        return;
+      }
       if (refs.search.value && !hadOpenMenu && !dialogOpen) {
         refs.search.value = "";
         state.query = "";
@@ -6652,6 +7228,25 @@
         row?.querySelector(nextMode ? ".bookmark-select-toggle" : ".bookmark-link")?.focus({ preventScroll: true });
       }
       return;
+    }
+
+    if (state.selectionMode && state.selectedBookmarkIds.size > 0) {
+      const keyLower = event.key.toLocaleLowerCase();
+      if (keyLower === "m") {
+        event.preventDefault();
+        openMoveDialog(null, refs.selectionMoveButton);
+        return;
+      }
+      if (keyLower === "f") {
+        event.preventDefault();
+        toggleSelectedFavorites();
+        return;
+      }
+      if (event.key === "Delete" || event.key === "Backspace") {
+        event.preventDefault();
+        deleteSelectedBookmarks();
+        return;
+      }
     }
 
     // Keyboard selection navigation (4-way spatial grid + j/k linear)

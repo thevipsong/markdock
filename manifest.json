@@ -13,8 +13,7 @@
   ],
   "optional_host_permissions": [
     "http://*/*",
-    "https://*/*",
-    "https://*.bing.com/*"
+    "https://*/*"
   ],
   "action": {
     "default_title": "打开 MarkDock 书签坞",

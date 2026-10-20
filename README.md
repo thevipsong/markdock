@@ -42,8 +42,8 @@
   <img src="assets/preview/dock-flyout.png" alt="折叠 Dock 坞与毛玻璃飞出卡片" width="95%" />
 </p>
 
-### 🎨 沉浸式外观背景与个性化质感 (Appearance & Wallpapers)
-> 支持默认微光、流光渐变、精选矢量壁纸、微软 Bing 每日壁纸与本地图片；更有微质感科技点阵网格与卡片毛玻璃通透浮雕质感。
+### 🎨 沉浸式外观背景与个性化质感 (Appearance & Themes)
+> 支持暗黑沉浸、白色纯净与跟随系统三模式；内置 6 款高雅多色流光空间渐变；更有点阵微质感科技网格与卡片毛玻璃通透浮雕质感。
 
 <p align="center">
   <img src="assets/preview/appearance-modal.png" alt="外观背景定制面板" width="85%" />
@@ -147,7 +147,6 @@ python3 serve.py
 | `activeTab` | 用户主动点击快捷键或右键菜单时，读取当前标签页标题和网址以快速保存书签。 |
 | `storage` | 跨设备同步界面偏好及还原文件夹展开状态所需的文件夹 ID。 |
 | 可选 HTTP/HTTPS 主机权限 | 用户运行失效链接检查时，只为所选书签目标请求对应权限。 |
-| 可选 `*.bing.com` 主机权限 | 用户选择 Bing 每日壁纸时请求，用于读取壁纸信息和图片。 |
 
 ---
 

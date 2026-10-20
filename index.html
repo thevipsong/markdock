@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#17181b" />
+    <meta name="theme-color" content="#0b0c10" />
     <title>MarkDock 书签坞</title>
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <script src="./theme-init.js"></script>
@@ -49,15 +49,43 @@
       <div class="workspace-column">
         <!-- Immersive Unified Top Header -->
         <header class="titlebar">
-        <!-- Centered Hero Search Bar -->
+        <!-- Left-Aligned 2-Column Grid Search Bar with Dynamic Web Search Trigger -->
         <div class="search-wrap">
-          <div class="search-box">
+          <div class="search-box" id="searchBox">
             <label class="search-input-label" for="searchInput">
               <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4.5 4.5"/></svg>
-              <input id="searchInput" type="search" placeholder="搜索书签、网址或拼音首字母..." aria-label="搜索书签" autocomplete="off" />
+              <input id="searchInput" type="search" placeholder="搜索书签 / 拼音首字母，按 Enter 网页搜索" aria-label="搜索书签或网页" autocomplete="off" />
             </label>
             <button class="search-clear" id="searchClearBtn" type="button" aria-label="清空搜索" hidden title="清空搜索">×</button>
-            <kbd title="按 / 键快速聚焦">/</kbd>
+            <div class="search-web-controls" id="searchWebControls" hidden>
+              <button class="search-web-btn" id="webSearchBtn" type="button" title="按 Enter 或点击跳转网页搜索">
+                <span class="search-enter-glyph" aria-hidden="true">↵</span>
+                <span id="webSearchBtnLabel">Google 搜索</span>
+              </button>
+              <button class="search-engine-btn" id="searchEngineBtn" type="button" aria-label="切换搜索引擎" aria-haspopup="true" aria-expanded="false" title="切换默认搜索引擎">
+                <svg viewBox="0 0 20 20" class="engine-chevron" aria-hidden="true"><path d="m5 7.5 5 5 5-5"/></svg>
+              </button>
+              <div class="search-engine-menu" id="searchEngineMenu" role="menu" hidden>
+                <div class="view-menu-group-label">网页搜索引擎</div>
+                <button type="button" class="view-menu-item is-active" data-engine="google" role="menuitemradio" aria-checked="true">
+                  <span class="engine-badge engine-badge--google" aria-hidden="true">G</span>
+                  <span>Google 搜索</span>
+                </button>
+                <button type="button" class="view-menu-item" data-engine="baidu" role="menuitemradio" aria-checked="false">
+                  <span class="engine-badge engine-badge--baidu" aria-hidden="true">百</span>
+                  <span>百度搜索</span>
+                </button>
+                <button type="button" class="view-menu-item" data-engine="bing" role="menuitemradio" aria-checked="false">
+                  <span class="engine-badge engine-badge--bing" aria-hidden="true">b</span>
+                  <span>Bing 必应</span>
+                </button>
+                <button type="button" class="view-menu-item" data-engine="duckduckgo" role="menuitemradio" aria-checked="false">
+                  <span class="engine-badge engine-badge--ddg" aria-hidden="true">D</span>
+                  <span>DuckDuckGo</span>
+                </button>
+              </div>
+            </div>
+            <kbd id="searchShortcutKbd" title="按 / 键快速聚焦">/</kbd>
           </div>
         </div>
 
@@ -69,9 +97,10 @@
           </button>
 
 
-          <!-- Shortcuts Button in Header -->
-          <button class="icon-button header-icon-btn" id="shortcutsButton" type="button" aria-label="快捷键指南 (?)" title="快捷键指南 (?)">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="17" r="1" fill="currentColor"/></svg>
+          <!-- Command Palette Trigger in Header (Replaces duplicate ? button) -->
+          <button class="header-cmd-btn" id="commandPaletteButton" type="button" aria-label="打开快速操作面板 (⌘K)" title="快速操作与全局检索 (⌘K / Ctrl+K)">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 3a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3H6a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3V6a3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3h12a3 3 0 0 0 3-3 3 3 0 0 0-3-3z"/></svg>
+            <kbd>⌘K</kbd>
           </button>
 
           <!-- Actions Dropdown -->
@@ -136,7 +165,10 @@
       <!-- Active Search Status Bar -->
       <div class="search-hint-bar" id="searchHintBar" hidden>
         <span id="searchResultNote"></span>
-        <button type="button" id="clearSearchScopeBtn" class="tag-button">清空搜索</button>
+        <div class="search-hint-actions">
+          <button type="button" id="hintWebSearchBtn" class="tag-button tag-button-accent">网页搜索</button>
+          <button type="button" id="clearSearchScopeBtn" class="tag-button">清空搜索</button>
+        </div>
       </div>
 
       <input id="fileInput" type="file" accept=".html,.htm,.json,text/html,application/json" hidden />
@@ -163,12 +195,28 @@
       </div>
       <div class="selection-actions">
         <button type="button" class="selection-action-button" id="selectAllResultsButton">全选当前结果</button>
-        <button type="button" class="selection-action-button" id="clearSelectionButton" disabled>清空选择</button>
+        <button type="button" class="selection-action-button" id="clearSelectionButton" disabled>清空</button>
         <span class="selection-actions-divider" aria-hidden="true"></span>
-        <button type="button" class="selection-action-button" id="selectionMoveButton" disabled>移动</button>
-        <button type="button" class="selection-action-button" id="selectionFavoriteButton" disabled>加入收藏</button>
-        <button type="button" class="selection-action-button is-danger" id="selectionDeleteButton" disabled>删除</button>
-        <button type="button" class="selection-exit-button" id="selectionExitButton">退出</button>
+        <button type="button" class="selection-action-button" id="selectionMoveButton" disabled title="移动已选书签 (M)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          <span>移动</span>
+          <kbd>M</kbd>
+        </button>
+        <button type="button" class="selection-action-button" id="selectionFavoriteButton" disabled title="收藏或取消收藏已选书签 (F)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          <span id="selectionFavoriteLabel">加入收藏</span>
+          <kbd>F</kbd>
+        </button>
+        <button type="button" class="selection-action-button is-danger" id="selectionDeleteButton" disabled title="删除已选书签 (Delete)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          <span>删除</span>
+          <kbd>⌫</kbd>
+        </button>
+        <span class="selection-actions-divider" aria-hidden="true"></span>
+        <button type="button" class="selection-exit-button" id="selectionExitButton" title="退出选择模式 (Esc)">
+          <span>退出</span>
+          <kbd>ESC</kbd>
+        </button>
       </div>
     </div>
 
@@ -323,17 +371,19 @@
     </dialog>
 
     <dialog id="commandDialog" class="command-dialog" aria-labelledby="commandTitle">
-      <div class="command-dialog-heading">
-        <div><p class="eyebrow">QUICK ACTIONS</p><h2 id="commandTitle">快速操作</h2></div>
-        <button class="icon-button" id="closeCommandButton" type="button" aria-label="关闭快速操作">×</button>
+      <h2 id="commandTitle" class="sr-only">快速操作</h2>
+      <div class="command-search-bar">
+        <label class="command-search-box" for="commandInput">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4.5 4.5"/></svg>
+          <input id="commandInput" type="search" autocomplete="off" placeholder="搜索书签、输入快捷指令，或输入 @ 按站点域名聚合…" />
+        </label>
+        <button class="command-esc-button" id="closeCommandButton" type="button" aria-label="关闭快速操作" title="按 Esc 关闭">ESC</button>
       </div>
-      <label class="command-search-box" for="commandInput">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4.5 4.5"/></svg>
-        <input id="commandInput" type="search" autocomplete="off" placeholder="搜索书签、输入操作，或输入 @ 按站点筛选…" />
-        <kbd>ESC</kbd>
-      </label>
       <div class="command-results" id="commandResults" role="listbox" aria-label="操作和书签结果"></div>
-      <div class="command-dialog-footer"><span><kbd>↑</kbd><kbd>↓</kbd> 选择　<kbd>Enter</kbd> 打开</span><span>⌘ K / Ctrl K</span></div>
+      <div class="command-dialog-footer">
+        <span class="command-footer-hints"><span><kbd>↑</kbd><kbd>↓</kbd> 导航</span><span><kbd>↵</kbd> 执行</span><span><kbd>@</kbd> 站点聚合</span></span>
+        <span class="command-footer-shortcut">⌘K / Ctrl+K</span>
+      </div>
     </dialog>
 
     <!-- Appearance Settings Dialog -->
@@ -370,7 +420,7 @@
           <span class="appearance-mode-meta">
             <span class="appearance-mode-copy">
               <strong>暗黑</strong>
-              <small>柔和深色，适合低光环境</small>
+              <small>柔和深色，沉浸护眼</small>
             </span>
             <span class="theme-choice-mark" aria-hidden="true">
               <svg viewBox="0 0 16 16"><path d="m3.5 8.2 2.8 2.7 6.2-6"/></svg>
@@ -389,7 +439,26 @@
           <span class="appearance-mode-meta">
             <span class="appearance-mode-copy">
               <strong>白色</strong>
-              <small>清晰明亮，适合日间浏览</small>
+              <small>清晰通透，适合日间</small>
+            </span>
+            <span class="theme-choice-mark" aria-hidden="true">
+              <svg viewBox="0 0 16 16"><path d="m3.5 8.2 2.8 2.7 6.2-6"/></svg>
+            </span>
+          </span>
+        </button>
+
+        <button class="appearance-mode-card" type="button" data-theme-option="system" aria-pressed="false">
+          <span class="appearance-theme-preview preview-system" aria-hidden="true">
+            <span class="preview-toolbar"><i></i><i></i><i></i></span>
+            <span class="preview-workspace">
+              <span class="preview-sidebar"></span>
+              <span class="preview-content"><i></i><i></i><i></i></span>
+            </span>
+          </span>
+          <span class="appearance-mode-meta">
+            <span class="appearance-mode-copy">
+              <strong>跟随系统</strong>
+              <small>随系统昼夜自动切换</small>
             </span>
             <span class="theme-choice-mark" aria-hidden="true">
               <svg viewBox="0 0 16 16"><path d="m3.5 8.2 2.8 2.7 6.2-6"/></svg>
@@ -415,10 +484,6 @@
             <span class="wallpaper-mode-swatch wallpaper-swatch-gradient" aria-hidden="true"></span>
             <span>流光渐变</span>
           </button>
-          <button class="wallpaper-mode-button" type="button" data-wallpaper-choice="custom" aria-pressed="false">
-            <span class="wallpaper-mode-swatch wallpaper-swatch-image" aria-hidden="true"></span>
-            <span>精选壁纸</span>
-          </button>
         </div>
 
         <div class="wallpaper-options" id="wallpaperOptions" hidden>
@@ -434,99 +499,39 @@
               <button class="wallpaper-gradient-button" type="button" data-wallpaper-gradient="abyss" aria-label="深蓝星河" aria-pressed="false"><span class="gradient-swatch gradient-abyss"></span><span>深蓝</span></button>
             </div>
           </div>
+        </div>
 
-          <!-- 2. 图片与壁纸画廊 (精选/必应/上传) -->
-          <div class="wallpaper-image-section" id="wallpaperImageOptions" hidden>
-            <div class="wallpaper-source-tabs" role="tablist" aria-label="壁纸来源">
-              <button class="wallpaper-source-tab is-active" type="button" data-image-source="curated" role="tab" aria-selected="true">精选画廊</button>
-              <button class="wallpaper-source-tab" type="button" data-image-source="bing" role="tab" aria-selected="false">每日必应</button>
-              <button class="wallpaper-source-tab" type="button" data-image-source="upload" role="tab" aria-selected="false">本地上传</button>
+        <!-- 5. 高级质感扩展 (点阵网格与卡片毛玻璃) -->
+        <div class="wallpaper-extra-effects" id="wallpaperExtraEffects">
+          <div class="appearance-switch-row">
+            <div class="switch-meta">
+              <strong>卡片显示密度 (Card Density)</strong>
+              <small>调整书签网格间距与卡片呼吸感</small>
             </div>
-
-            <!-- 精选画廊列表 -->
-            <div class="curated-wallpapers-grid" id="curatedWallpapersGrid">
-              <button class="curated-wallpaper-item is-active" type="button" data-curated-id="aurora" title="极光流动">
-                <span class="curated-thumb" style="background-image: url('assets/wallpapers/aurora-flow.svg');"></span>
-                <span>极光流动</span>
-              </button>
-              <button class="curated-wallpaper-item" type="button" data-curated-id="cosmic" title="深邃星云">
-                <span class="curated-thumb" style="background-image: url('assets/wallpapers/cosmic-glow.svg');"></span>
-                <span>深邃星云</span>
-              </button>
-              <button class="curated-wallpaper-item" type="button" data-curated-id="zen" title="静谧远山">
-                <span class="curated-thumb" style="background-image: url('assets/wallpapers/zen-mountain.svg');"></span>
-                <span>静谧远山</span>
-              </button>
-              <button class="curated-wallpaper-item" type="button" data-curated-id="dusk" title="暮光落霞">
-                <span class="curated-thumb" style="background-image: url('assets/wallpapers/warm-dusk.svg');"></span>
-                <span>暮光落霞</span>
-              </button>
-            </div>
-
-            <!-- 每日必应卡片 -->
-            <div class="bing-wallpaper-card" id="bingWallpaperCard" hidden>
-              <div class="bing-preview-box">
-                <div class="bing-preview-img" id="bingPreviewImg"></div>
-                <div class="bing-info">
-                  <strong id="bingTitle">今日必应壁纸</strong>
-                  <span id="bingCopyright" class="bing-copyright">选择后从 Bing 获取今日壁纸。</span>
-                </div>
-              </div>
-              <button class="button button-sm button-secondary" id="refreshBingButton" type="button">🔄 刷新今日壁纸</button>
-            </div>
-
-            <!-- 自定义上传卡片 -->
-            <div class="custom-upload-box" id="customUploadBox" hidden>
-              <div class="custom-preview-row">
-                <div class="custom-thumb" id="customWallpaperThumb" aria-hidden="true"></div>
-                <div class="custom-thumb-meta">
-                  <span class="custom-thumb-title">当前自定义图片</span>
-                  <span class="wallpaper-status" id="wallpaperStatus" role="status">图片已安全保存在本地浏览器。</span>
-                </div>
-              </div>
-              <div class="custom-upload-actions">
-                <button class="button wallpaper-upload-button" id="uploadWallpaperButton" type="button">选择本地图片</button>
-                <button class="button button-ghost" id="removeWallpaperButton" type="button" hidden>移除图片</button>
-                <input id="wallpaperFileInput" type="file" accept="image/*" hidden />
-              </div>
+            <div class="density-segmented" role="group" aria-label="卡片显示密度">
+              <button type="button" class="density-segment-btn is-active" data-density-option="comfortable" aria-pressed="true">舒适</button>
+              <button type="button" class="density-segment-btn" data-density-option="compact" aria-pressed="false">紧凑</button>
             </div>
           </div>
 
-          <!-- 4. 画面微调 (模糊与暗角遮罩) -->
-          <div class="wallpaper-adjustments" id="wallpaperAdjustments" hidden>
-            <label class="wallpaper-range-row" id="wallpaperBlurRow" for="wallpaperBlurRange">
-              <span>模糊</span>
-              <input id="wallpaperBlurRange" type="range" min="0" max="28" step="1" value="10" />
-              <output id="wallpaperBlurValue" for="wallpaperBlurRange">10 px</output>
-            </label>
-            <label class="wallpaper-range-row" for="wallpaperOverlayRange">
-              <span>遮罩</span>
-              <input id="wallpaperOverlayRange" type="range" min="0" max="75" step="1" value="24" />
-              <output id="wallpaperOverlayValue" for="wallpaperOverlayRange">24%</output>
-            </label>
+          <div class="appearance-switch-row">
+            <div class="switch-meta">
+              <strong>微质感点阵 (Dot Grid)</strong>
+              <small>在背景表层叠加细腻科技网格微粒</small>
+            </div>
+            <button type="button" class="appearance-toggle-switch" id="toggleDotGrid" role="switch" aria-checked="false" aria-label="微质感点阵开关">
+              <span class="toggle-knob"></span>
+            </button>
           </div>
 
-          <!-- 5. 高级质感扩展 (点阵网格与卡片毛玻璃) -->
-          <div class="wallpaper-extra-effects" id="wallpaperExtraEffects">
-            <div class="appearance-switch-row">
-              <div class="switch-meta">
-                <strong>微质感点阵 (Dot Grid)</strong>
-                <small>在背景表层叠加细腻科技网格微粒</small>
-              </div>
-              <button type="button" class="appearance-toggle-switch" id="toggleDotGrid" role="switch" aria-checked="false" aria-label="微质感点阵开关">
-                <span class="toggle-knob"></span>
-              </button>
+          <div class="appearance-switch-row">
+            <div class="switch-meta">
+              <strong>卡片毛玻璃通透 (Frosted Glass)</strong>
+              <small>书签卡片半透明磨砂毛玻璃浮雕质感</small>
             </div>
-
-            <div class="appearance-switch-row">
-              <div class="switch-meta">
-                <strong>卡片毛玻璃通透 (Frosted Glass)</strong>
-                <small>书签卡片半透明磨砂毛玻璃浮雕质感</small>
-              </div>
-              <button type="button" class="appearance-toggle-switch" id="toggleCardGlass" role="switch" aria-checked="false" aria-label="卡片毛玻璃开关">
-                <span class="toggle-knob"></span>
-              </button>
-            </div>
+            <button type="button" class="appearance-toggle-switch" id="toggleCardGlass" role="switch" aria-checked="false" aria-label="卡片毛玻璃开关">
+              <span class="toggle-knob"></span>
+            </button>
           </div>
         </div>
       </section>
@@ -549,7 +554,7 @@
       <ul class="data-use-list">
         <li>读取书签标题、网址和文件夹，用于展示、搜索、整理及按你的操作更新 Chrome 书签；你创建或导入到 MarkDock 的本地书签也保存在本机。主动使用快捷键或右键菜单快速保存时，会读取当前标签页标题和网址。</li>
         <li>收藏状态、自定义图标和外观偏好保存在本机；Chrome Sync 会同步界面偏好与文件夹展开状态，展开状态包含相应的 Chrome 书签文件夹 ID。</li>
-        <li>显示书签卡片时会自动向对应网站请求高清图标，该网站会收到图标请求连接信息。失效链接检查只在你启动并授权后请求书签网址；Bing 壁纸只在你选用后申请 Bing 网站权限。</li>
+        <li>显示书签卡片时会自动向对应网站请求高清图标，该网站会收到图标请求连接信息。失效链接检查只在你启动并授权后请求书签网址。</li>
         <li>MarkDock 不会把书签列表发送给开发者，也不使用广告或分析服务。</li>
       </ul>
       <p class="data-use-policy">详细处理方式见 <a href="./privacy.html" target="_blank" rel="noopener noreferrer">隐私政策</a>。</p>
@@ -562,11 +567,11 @@
 
     <!-- Right-click Context Menu -->
     <div class="context-menu" id="contextMenu" role="menu" hidden>
-      <button type="button" data-menu-kind="bookmark" data-action="open" role="menuitem">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/></svg> 打开书签
-      </button>
       <button type="button" data-menu-kind="bookmark" data-action="open-window" role="menuitem">
         <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/></svg> 在新窗口打开
+      </button>
+      <button type="button" data-menu-kind="bookmark" data-action="open-incognito" role="menuitem">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 10h20M5 10l2-6h10l2 6"/><circle cx="7.5" cy="15.5" r="3.5"/><circle cx="16.5" cy="15.5" r="3.5"/><path d="M11 15.5h2"/></svg> 在隐身窗口打开
       </button>
       <div class="menu-divider" data-menu-kind="bookmark"></div>
       <button type="button" data-menu-kind="bookmark" data-action="filter-domain" role="menuitem">
@@ -577,9 +582,6 @@
       </button>
       <button type="button" data-menu-kind="bookmark" data-action="copy-title" role="menuitem">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg> 复制名称
-      </button>
-      <button type="button" data-menu-kind="bookmark" data-action="toggle-favorite" role="menuitem">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg> <span id="contextFavoriteLabel">加入收藏</span>
       </button>
       <div class="menu-divider" data-menu-kind="bookmark"></div>
       <button type="button" data-menu-kind="bookmark" data-action="edit" role="menuitem">

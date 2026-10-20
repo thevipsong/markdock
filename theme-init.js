@@ -1,6 +1,5 @@
 /**
- * 在样式表载入前恢复黑白主题与背景，避免刷新时出现闪回。
- * 背景图片使用 IndexedDB 异步读取，其余设置从小体积本地配置同步恢复。
+ * 在样式表载入前恢复主题（暗黑 / 白色 / 跟随系统）与背景，避免刷新时出现闪回。
  */
 (() => {
   "use strict";
@@ -8,14 +7,7 @@
   const SETTINGS_KEY = "qidian-skin-settings-v2";
   const THEME_KEY = "qidian-theme-v1";
   const LEGACY_APPEARANCE_KEY = "qidian-appearance-v1";
-  const USER_DATA_CONSENT_KEY = "markdock-data-use-consent-v1";
   const root = document.documentElement;
-  const mayReadLocalUserAssets = location.protocol !== "chrome-extension:"
-    || (() => {
-      try { return localStorage.getItem(USER_DATA_CONSENT_KEY) === "accepted"; }
-      catch { return false; }
-    })();
-  const initialWallpaperGeneration = root.dataset.wallpaperGeneration || "0";
   const lightSkins = new Set(["ivory", "mist", "rose", "light", "white"]);
   const darkSkins = new Set(["nebula", "abyss", "aurora", "ember", "midnight", "dark", "black"]);
   const gradients = {
@@ -44,12 +36,6 @@
       light: "radial-gradient(1000px 680px at 80% -12%, rgba(56, 189, 248, .15), transparent 68%), linear-gradient(155deg, #f0f9ff 0%, #e0f2fe 55%, #e8edf5 100%)"
     }
   };
-  const curatedFiles = {
-    aurora: { dark: "assets/wallpapers/aurora-flow.svg", light: "assets/wallpapers/aurora-flow-light.svg" },
-    cosmic: { dark: "assets/wallpapers/cosmic-glow.svg", light: "assets/wallpapers/cosmic-glow-light.svg" },
-    zen: { dark: "assets/wallpapers/zen-mountain.svg", light: "assets/wallpapers/zen-mountain-light.svg" },
-    dusk: { dark: "assets/wallpapers/warm-dusk.svg", light: "assets/wallpapers/warm-dusk-light.svg" }
-  };
   let settings = {};
 
   try {
@@ -66,104 +52,50 @@
   } catch {
     legacySettings = {};
   }
-  let theme = settings.theme === "dark" || settings.theme === "light" ? settings.theme : null;
-  if (theme !== "dark" && theme !== "light") {
-    try { theme = localStorage.getItem(THEME_KEY); } catch { /* Use the settings fallback. */ }
-    if (theme !== "dark" && theme !== "light") {
-      if (lightSkins.has(settings.skin)) theme = "light";
-      else if (darkSkins.has(settings.skin)) theme = "dark";
+
+  const validModes = new Set(["dark", "light", "system"]);
+  let themeMode = validModes.has(settings.theme) ? settings.theme : null;
+  if (!themeMode) {
+    try {
+      const stored = localStorage.getItem(THEME_KEY);
+      if (validModes.has(stored)) themeMode = stored;
+    } catch { /* ignore */ }
+    if (!themeMode) {
+      if (lightSkins.has(settings.skin)) themeMode = "light";
+      else if (darkSkins.has(settings.skin)) themeMode = "dark";
     }
   }
 
-  if (theme !== "dark" && theme !== "light") {
-    if (legacySettings.preset === "ivory") theme = "light";
-    else if (["aurora", "obsidian"].includes(legacySettings.preset)) theme = "dark";
+  if (!themeMode) {
+    if (legacySettings.preset === "ivory") themeMode = "light";
+    else if (["aurora", "obsidian"].includes(legacySettings.preset)) themeMode = "dark";
   }
-  theme = theme === "light" ? "light" : "dark";
+  themeMode = validModes.has(themeMode) ? themeMode : "dark";
 
-  const oldMode = settings.wallpaperMode || (legacySettings.preset === "image" ? "custom" : "diffuse");
-  const allowedModes = new Set(["diffuse", "gradient", "custom"]);
-  const wallpaperMode = oldMode === "bing"
-    ? "custom"
-    : (allowedModes.has(oldMode) ? oldMode : "diffuse");
+  const resolvedTheme = themeMode === "system"
+    ? (window.matchMedia?.("(prefers-color-scheme: light)").matches ? "light" : "dark")
+    : (themeMode === "light" ? "light" : "dark");
+
+  const allowedModes = new Set(["diffuse", "gradient"]);
+  const wallpaperMode = allowedModes.has(settings.wallpaperMode) ? settings.wallpaperMode : "diffuse";
   const gradient = Object.hasOwn(gradients, settings.gradient) ? settings.gradient : "slate";
-  const savedBlur = Number.isFinite(settings.blur) ? settings.blur : legacySettings.blur;
-  const savedOverlay = Number.isFinite(settings.overlay) ? settings.overlay : legacySettings.overlay;
-  const blur = Number.isFinite(savedBlur) ? Math.max(0, Math.min(28, savedBlur)) : 10;
-  const overlay = Number.isFinite(savedOverlay) ? Math.max(0, Math.min(75, savedOverlay)) : 24;
-  let bootstrapWallpaperUrl = "";
 
-  root.dataset.theme = theme;
-  root.dataset.skin = theme === "dark" ? "midnight" : "ivory";
+  root.dataset.themeMode = themeMode;
+  root.dataset.theme = resolvedTheme;
+  root.dataset.skin = resolvedTheme === "dark" ? "midnight" : "ivory";
   root.dataset.material = "frosted";
   root.dataset.wallpaperMode = wallpaperMode;
+  delete root.dataset.imageSubMode;
   root.dataset.textureMode = settings.textureMode === "dots" ? "dots" : "none";
   root.dataset.cardGlass = settings.cardGlass ? "true" : "false";
 
   const metaTheme = document.querySelector("meta[name='theme-color']");
-  if (metaTheme) metaTheme.content = theme === "dark" ? "#101113" : "#f3f4f5";
-  root.style.setProperty("--wallpaper-blur", `${blur}px`);
-  const imageMode = wallpaperMode === "custom";
-  root.style.setProperty("--wallpaper-overlay", String(imageMode ? overlay / 100 : 0));
-  if (wallpaperMode === "gradient") root.style.setProperty("--wallpaper-gradient", gradients[gradient][theme]);
+  if (metaTheme) metaTheme.content = resolvedTheme === "dark" ? "#0b0c10" : "#f8fafc";
+  root.style.setProperty("--wallpaper-blur", "0px");
+  root.style.setProperty("--wallpaper-overlay", "0");
+  root.style.removeProperty("--custom-wallpaper-url");
+  if (wallpaperMode === "gradient") root.style.setProperty("--wallpaper-gradient", gradients[gradient][resolvedTheme]);
+  else root.style.removeProperty("--wallpaper-gradient");
 
-  if (theme === "dark" || theme === "light") {
-    try { localStorage.setItem(THEME_KEY, theme); } catch { /* Theme still renders. */ }
-  }
-
-  if (wallpaperMode === "custom") {
-    const subMode = settings.imageSubMode || (oldMode === "bing" ? "bing" : "curated");
-    if (subMode === "curated") {
-      const item = curatedFiles[settings.curatedId] || curatedFiles.aurora;
-      const file = typeof item === "string" ? item : (item[theme] || item.dark);
-      root.style.setProperty("--custom-wallpaper-url", `url(${JSON.stringify(file)})`);
-    } else if (subMode === "bing") {
-      // Bing images are restored by appearance.js after it verifies or requests
-      // the optional host permission. Avoid an unauthorized remote image request
-      // during the pre-render theme bootstrap.
-    } else if (subMode === "upload") {
-      if (mayReadLocalUserAssets
-        && typeof settings.cachedWallpaperUrl === "string"
-        && /^(https?:|data:image\/)/i.test(settings.cachedWallpaperUrl)) {
-        root.style.setProperty("--custom-wallpaper-url", `url(${JSON.stringify(settings.cachedWallpaperUrl)})`);
-      }
-      if (mayReadLocalUserAssets) {
-        try {
-          const request = indexedDB.open("qidian-appearance-assets", 1);
-          request.onupgradeneeded = () => {
-            if (!request.result.objectStoreNames.contains("images")) request.result.createObjectStore("images");
-          };
-          request.onsuccess = () => {
-            const db = request.result;
-            try {
-              const transaction = db.transaction("images", "readonly");
-              const imageRequest = transaction.objectStore("images").get("background");
-              imageRequest.onsuccess = () => {
-                if (root.dataset.wallpaperMode !== "custom"
-                    || root.dataset.wallpaperGeneration !== initialWallpaperGeneration
-                    || !(imageRequest.result instanceof Blob)) return;
-                const imageUrl = URL.createObjectURL(imageRequest.result);
-                bootstrapWallpaperUrl = imageUrl;
-                root.style.setProperty("--custom-wallpaper-url", `url(${JSON.stringify(imageUrl)})`);
-              };
-              transaction.oncomplete = () => db.close();
-              transaction.onerror = () => db.close();
-            } catch {
-              db.close();
-            }
-          };
-        } catch {
-          // Safe fallback
-        }
-      }
-    }
-  }
-
-
-  window.addEventListener("pagehide", (event) => {
-    // Keep the object URL alive when the document enters the back-forward
-    // cache; the same document and its CSS background are restored on return.
-    if (event.persisted) return;
-    if (bootstrapWallpaperUrl) URL.revokeObjectURL(bootstrapWallpaperUrl);
-  });
+  try { localStorage.setItem(THEME_KEY, themeMode); } catch { /* Theme still renders. */ }
 })();

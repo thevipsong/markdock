@@ -22,3 +22,8 @@ Thumbs.db
 # Logs & Temp
 *.log
 *.tmp
+
+# Chrome Web Store Build & Packaging
+dist/
+*.zip
+store_assets/
