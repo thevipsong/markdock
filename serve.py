@@ -114,6 +114,7 @@ def _classify_http_error(error: HTTPError) -> dict:
     blocked_redirect_details = {
         "Blocked non-HTTP redirect": "跳转到非网页地址，未继续访问",
         "Blocked redirect containing credentials": "跳转网址含登录信息，未继续访问",
+        "Blocked cross-host redirect": "跳转到其他主机，未继续访问",
         "Blocked local cross-host redirect": "内网书签跳转到其他主机，未继续访问",
         "Blocked local cross-port redirect": "内网书签跳转到其他端口，未继续访问",
         "Blocked local HTTPS downgrade": "HTTPS 内网书签跳转到 HTTP，未继续访问",
@@ -169,8 +170,8 @@ class BookmarkHandler(SimpleHTTPRequestHandler):
                 open_link = link_opener.open
             else:
                 # Public URLs use the same IP-pinned transport as favicon
-                # discovery. Each redirect is resolved and pinned again, and
-                # redirects to local/private addresses are rejected.
+                # discovery. Redirects must stay on the same hostname, and
+                # each destination is resolved and pinned again.
                 open_link = open_public_link
             deadline = time.monotonic() + LINK_CHECK_BUDGET
 

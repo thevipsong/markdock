@@ -3166,7 +3166,12 @@ button:disabled,
   background-size: 24px 24px;
 }
 :root[data-theme="light"][data-texture-mode="dots"] .backdrop-texture {
-  background-image: radial-gradient(rgba(15, 23, 42, 0.055) 1px, transparent 1px);
+  background-image: radial-gradient(rgba(15, 23, 42, 0.045) 0.8px, transparent 0.8px);
+  background-size: 28px 28px;
+}
+:root[data-theme="dark"][data-texture-mode="dots"] .backdrop-texture {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.075) 0.8px, transparent 0.8px);
+  background-size: 28px 28px;
 }
 
 /* 卡片毛玻璃通透浮雕质感 */
@@ -6677,4 +6682,81 @@ button, .button, .tab, .bookmark-title { font-weight: 620; }
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
+/* Gradient themes use the same legible frosted surfaces in both color modes. */
+:root[data-wallpaper-mode="gradient"] .sidebar {
+  -webkit-backdrop-filter: blur(24px) saturate(145%);
+  backdrop-filter: blur(24px) saturate(145%);
+}
+:root[data-theme="dark"][data-wallpaper-mode="gradient"] .sidebar {
+  background: rgba(16, 19, 26, 0.78);
+  border-color: rgba(255, 255, 255, 0.085);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.055);
+}
+:root[data-theme="light"][data-wallpaper-mode="gradient"] .sidebar {
+  background: rgba(255, 255, 255, 0.82);
+  border-color: rgba(255, 255, 255, 0.76);
+  box-shadow: 0 16px 40px rgba(31, 45, 68, 0.065), inset 0 1px 0 rgba(255, 255, 255, 0.92);
+}
+:root[data-wallpaper-mode="gradient"] .workspace-column .titlebar {
+  background: transparent;
+  box-shadow: none;
+}
+:root[data-theme="dark"][data-wallpaper-mode="gradient"] .workspace-column .titlebar {
+  border-bottom-color: rgba(255, 255, 255, 0.065);
+}
+:root[data-theme="light"][data-wallpaper-mode="gradient"] .workspace-column .titlebar {
+  border-bottom-color: rgba(31, 45, 68, 0.08);
+}
+:root[data-theme="dark"][data-wallpaper-mode="gradient"] .workspace-column .titlebar .search-box {
+  background: rgba(20, 23, 31, 0.78);
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.055);
+}
+:root[data-theme="light"][data-wallpaper-mode="gradient"] .workspace-column .titlebar .search-box {
+  background: rgba(255, 255, 255, 0.84);
+  border-color: rgba(31, 45, 68, 0.1);
+  box-shadow: 0 4px 20px rgba(31, 45, 68, 0.045), inset 0 1px 0 rgba(255, 255, 255, 0.92);
+}
+:root[data-wallpaper-mode="gradient"] .workspace-column .titlebar .search-box:focus-within,
+:root[data-wallpaper-mode="gradient"] .workspace-column .titlebar .search-box.has-query {
+  border-color: var(--accent-border);
+  box-shadow: 0 0 0 3px var(--accent-soft), 0 5px 22px rgba(24, 32, 48, 0.12);
+}
+
+/* Keep the glass toggle effective after the theme-specific card rules below. */
+:root[data-theme="light"][data-card-glass="true"] .workspace-column .bookmark-card:not(.is-selected) {
+  background: rgba(255, 255, 255, 0.82);
+  border-color: rgba(255, 255, 255, 0.72);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  backdrop-filter: blur(16px) saturate(140%);
+  box-shadow: 0 4px 16px rgba(31, 45, 68, 0.065), inset 0 1px 0 rgba(255, 255, 255, 0.75);
+}
+:root[data-theme="dark"][data-card-glass="true"] .workspace-column .bookmark-card:not(.is-selected) {
+  background: rgba(19, 23, 31, 0.84);
+  border-color: rgba(255, 255, 255, 0.095);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  backdrop-filter: blur(16px) saturate(140%);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.055);
+}
+:root[data-theme="light"][data-card-glass="true"] .workspace-column .bookmark-card:not(.is-selected):hover,
+:root[data-theme="light"][data-card-glass="true"] .workspace-column .bookmark-card:not(.is-selected):focus-within {
+  background: rgba(255, 255, 255, 0.94);
+  border-color: rgba(112, 95, 238, 0.28);
+  box-shadow: 0 9px 24px rgba(31, 45, 68, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+:root[data-theme="dark"][data-card-glass="true"] .workspace-column .bookmark-card:not(.is-selected):hover,
+:root[data-theme="dark"][data-card-glass="true"] .workspace-column .bookmark-card:not(.is-selected):focus-within {
+  background: rgba(27, 32, 43, 0.94);
+  border-color: rgba(151, 137, 255, 0.42);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .backdrop,
+  .backdrop-texture,
+  .workspace-column .bookmark-card,
+  .workspace-column .titlebar .search-box {
+    transition-duration: 0.01ms !important;
+  }
+}
 

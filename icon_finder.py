@@ -303,6 +303,13 @@ class _PublicRedirects(HTTPRedirectHandler):
 
     def redirect_request(self, request, response, code, message, headers, new_url):
         target = urljoin(request.full_url, new_url)
+        try:
+            source_host = (urlsplit(request.full_url).hostname or "").rstrip(".").lower()
+            target_host = (urlsplit(target).hostname or "").rstrip(".").lower()
+        except ValueError:
+            source_host = target_host = ""
+        if not source_host or target_host != source_host:
+            raise HTTPError(target, 403, "Blocked cross-host redirect", headers, response)
         if not _public_addresses(target, allow_nonstandard_port=self.allow_nonstandard_port):
             raise HTTPError(target, 403, "Blocked non-public redirect", headers, response)
         return super().redirect_request(request, response, code, message, headers, target)
@@ -506,7 +513,9 @@ def _discover(origin: str, page_url: str, app_directory: str) -> tuple[bytes, st
         parser = _IconLinks()
         parser.feed(page[0].decode("utf-8", errors="ignore"))
         declared_candidates = sorted(
-            ((urljoin(page_url, href), declared) for href, declared in parser.links),
+            ((candidate, declared)
+             for href, declared in parser.links
+             if (candidate := urljoin(page_url, href)) and _public_origin(candidate) == origin),
             key=lambda entry: entry[1],
             reverse=True,
         )[:MAX_DECLARED_CANDIDATES]
@@ -578,20 +587,9 @@ def _discover(origin: str, page_url: str, app_directory: str) -> tuple[bytes, st
         if best:
             return best
 
-    # Send the bookmark origin to Google only when the site itself exposes no
-    # usable icon. This keeps the fallback genuinely last-resort and avoids
-    # replacing even a small first-party favicon with Google's rendition.
-    if time.monotonic() >= deadline:
-        return None
-    google_fallback = (
-        "https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL"
-        f"&url={origin}&size=128"
-    )
-    fetched = _fetch(google_fallback, MAX_ICON, deadline)
-    details = _image_details(fetched[0]) if fetched else None
-    if not fetched or not details:
-        return None
-    return fetched[0], details[0]
+    # Keep discovery first-party: a missing site icon should not disclose the
+    # bookmarked origin to a third-party favicon service.
+    return None
 
 
 def _cached(key: str) -> tuple[bytes, str] | None | bool:

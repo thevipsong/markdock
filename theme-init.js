@@ -77,8 +77,8 @@
     : (themeMode === "light" ? "light" : "dark");
 
   const allowedModes = new Set(["diffuse", "gradient"]);
-  const wallpaperMode = allowedModes.has(settings.wallpaperMode) ? settings.wallpaperMode : "diffuse";
-  const gradient = Object.hasOwn(gradients, settings.gradient) ? settings.gradient : "slate";
+  const wallpaperMode = allowedModes.has(settings.wallpaperMode) ? settings.wallpaperMode : "gradient";
+  const gradient = Object.hasOwn(gradients, settings.gradient) ? settings.gradient : "aurora";
 
   root.dataset.themeMode = themeMode;
   root.dataset.theme = resolvedTheme;
@@ -86,8 +86,8 @@
   root.dataset.material = "frosted";
   root.dataset.wallpaperMode = wallpaperMode;
   delete root.dataset.imageSubMode;
-  root.dataset.textureMode = settings.textureMode === "dots" ? "dots" : "none";
-  root.dataset.cardGlass = settings.cardGlass ? "true" : "false";
+  root.dataset.textureMode = settings.textureMode === "none" ? "none" : "dots";
+  root.dataset.cardGlass = settings.cardGlass === false ? "false" : "true";
 
   const metaTheme = document.querySelector("meta[name='theme-color']");
   if (metaTheme) metaTheme.content = resolvedTheme === "dark" ? "#0b0c10" : "#f8fafc";

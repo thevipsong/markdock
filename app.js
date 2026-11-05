@@ -2281,10 +2281,27 @@
       .filter(Boolean);
     if (!items.length || !Array.isArray(destinationPath) || !destinationPath.length) return;
 
+    const originalItems = state.items;
+    const localSnapshots = items
+      .filter((item) => item.source !== "chrome")
+      .map((item) => ({ item, path: [...(item.path || [])], category: item.category, group: item.group }));
+    const createdFolderIds = [];
+    const movedChrome = [];
+    let targetChromeFolderId = null;
+    let localPersisted = false;
+
     try {
       const chromeItems = items.filter((item) => item.source === "chrome");
       if (EXTENSION_MODE && chromeItems.length) {
-        let targetChromeFolderId = explicitChromeFolderId ? String(explicitChromeFolderId) : null;
+        for (const item of chromeItems) {
+          if (!(await chromeBookmarkMatchesCurrent(item))) {
+            const conflictMessage = await refreshAfterChromeConflict();
+            toast(`拖拽移动已取消：${conflictMessage}`, true);
+            return;
+          }
+        }
+
+        targetChromeFolderId = explicitChromeFolderId ? String(explicitChromeFolderId) : null;
         if (!targetChromeFolderId && beforeItem?.source === "chrome" && beforeItem.parentId) {
           targetChromeFolderId = String(beforeItem.parentId);
         }
@@ -2311,6 +2328,7 @@
             } else {
               const created = await chrome.bookmarks.create({ parentId, title: segment });
               parentId = String(created.id);
+              createdFolderIds.push(parentId);
               folderIdsByPath.set(key, parentId);
             }
           }
@@ -2325,6 +2343,12 @@
             moveSpec.index = baseIndex + i;
           }
           await chrome.bookmarks.move(String(item.chromeId), moveSpec);
+          movedChrome.push({
+            item,
+            parentId: String(item.parentId || "1"),
+            index: item.index,
+            targetParentId: String(targetChromeFolderId)
+          });
         }
       }
 
@@ -2349,17 +2373,61 @@
         }
       }
 
-      if (localChanged) persist();
+      if (localChanged) {
+        if (!persist()) throw new Error("浏览器存储空间不足，本地书签移动未能保存");
+        localPersisted = true;
+      }
+      let syncSucceeded = true;
       if (EXTENSION_MODE && chromeItems.length) {
-        await syncChromeBookmarks();
+        syncSucceeded = await syncChromeBookmarks() === true;
       } else {
         render();
       }
       toast(beforeItem
-        ? `已调整书签顺序并归入“${destinationPath.at(-1)}”`
-        : `已将 ${items.length} 个书签移至“${destinationPath.join(" › ")}”`);
+        ? `已调整书签顺序并归入“${destinationPath.at(-1)}”${chromeSyncWarning(syncSucceeded)}`
+        : `已将 ${items.length} 个书签移至“${destinationPath.join(" › ")}”${chromeSyncWarning(syncSucceeded)}`,
+      syncSucceeded !== true);
     } catch (error) {
-      toast(`拖拽移动失败：${error?.message || "请重试"}`, true);
+      for (const snapshot of localSnapshots) {
+        snapshot.item.path = snapshot.path;
+        snapshot.item.category = snapshot.category;
+        snapshot.item.group = snapshot.group;
+      }
+      state.items = originalItems;
+      let rollbackFailed = false;
+      for (const previous of movedChrome.reverse()) {
+        try {
+          const moved = { ...previous.item, parentId: previous.targetParentId };
+          if (!(await chromeBookmarkMatchesCurrent(previous.item, moved))) {
+            rollbackFailed = true;
+            continue;
+          }
+          await chrome.bookmarks.move(previous.item.chromeId, {
+            parentId: previous.parentId,
+            ...(Number.isInteger(previous.index) ? { index: previous.index } : {})
+          });
+        } catch {
+          rollbackFailed = true;
+        }
+      }
+      for (const folderId of createdFolderIds.reverse()) {
+        try { await chrome.bookmarks.remove(folderId); }
+        catch { rollbackFailed = true; }
+      }
+
+      let localRollbackFailed = false;
+      if (localPersisted) localRollbackFailed = !persist();
+      let syncSucceeded = true;
+      if (EXTENSION_MODE && (movedChrome.length || createdFolderIds.length)) {
+        syncSucceeded = await syncChromeBookmarks() === true;
+      } else {
+        render();
+      }
+      const detail = rollbackFailed
+        ? "；部分 Chrome 操作无法自动还原，请检查书签文件夹"
+        : "";
+      const localDetail = localRollbackFailed ? "；本地书签也未能恢复到存储" : "";
+      toast(`拖拽移动失败：${error?.message || "请重试"}${detail}${localDetail}${chromeSyncWarning(syncSucceeded)}`, true);
     }
   }
 
@@ -2372,6 +2440,10 @@
   function filteredItems() {
     const rawQuery = state.query.trim().toLocaleLowerCase();
     const tokens = rawQuery.split(/\s+/).filter(Boolean);
+    const domainQueries = tokens.map((token) =>
+      token.match(/^(?:site:|domain:|@)(.+)$/i)?.[1]?.toLocaleLowerCase() || null
+    );
+    const needsDomainLookup = domainQueries.some(Boolean);
     const compactQuery = rawQuery.replace(/\s+/g, "").toUpperCase();
     const selectedPath = selectedNavigationPath();
 
@@ -2395,11 +2467,10 @@
         const groupLower = item.group.toLocaleLowerCase();
         const pathValue = getNavigationPath(item).join(" ");
         const pathLower = pathValue.toLocaleLowerCase();
-        const itemHost = hostOf(item.url).toLocaleLowerCase();
-        return tokens.every((token) => {
-          const domainPrefixMatch = token.match(/^(?:site:|domain:|@)(.+)$/i);
-          if (domainPrefixMatch) {
-            const domainPart = domainPrefixMatch[1].toLocaleLowerCase();
+        const itemHost = needsDomainLookup ? hostOf(item.url).toLocaleLowerCase() : "";
+        return tokens.every((token, index) => {
+          const domainPart = domainQueries[index];
+          if (domainPart) {
             return itemHost.includes(domainPart) || urlLower.includes(domainPart);
           }
           return titleLower.includes(token)
@@ -4783,6 +4854,21 @@
     }
   }
 
+  function chromeBookmarkSubtreeSignature(node) {
+    const normalize = (entry) => ({
+      id: String(entry.id || ""),
+      parentId: String(entry.parentId || ""),
+      title: String(entry.title || ""),
+      url: entry.url ? storedBookmarkUrl(entry.url) : "",
+      index: Number.isInteger(entry.index) ? entry.index : null,
+      dateAdded: Number(entry.dateAdded) || 0,
+      unmodifiable: Boolean(entry.unmodifiable),
+      folderType: String(entry.folderType || ""),
+      children: (entry.children || []).map(normalize)
+    });
+    return JSON.stringify(node ? normalize(node) : null);
+  }
+
   async function refreshAfterChromeConflict() {
     if (chromeBookmarkImporting) {
       return "Chrome 正在导入书签，本次操作未执行；请等待导入完成后重试。";
@@ -5242,29 +5328,86 @@
     const confirmMsg = count > 0
       ? `确定要删除文件夹“${node.label}”及其包含的 ${count} 个书签吗？`
       : `确定要删除空文件夹“${node.label}”吗？`;
+
+    const chromeFolderId = EXTENSION_MODE && node.folderId && canRenameChromeFolder(node.folderId)
+      ? String(node.folderId)
+      : null;
+    let chromeFolderSnapshot = null;
+    if (chromeFolderId) {
+      const knownFolder = chromeFolders.get(chromeFolderId);
+      const expectedFolder = {
+        title: knownFolder?.title,
+        parentId: knownFolder?.parentId,
+        unmodifiable: knownFolder?.unmodifiable
+      };
+      if (!knownFolder || !(await chromeFolderMatchesCurrent(chromeFolderId, expectedFolder))) {
+        toast(`删除已取消：${await refreshAfterChromeConflict()}`, true);
+        return;
+      }
+      try {
+        const [folder] = await chrome.bookmarks.getSubTree(chromeFolderId);
+        if (!folder) throw new Error("文件夹已不存在");
+        chromeFolderSnapshot = chromeBookmarkSubtreeSignature(folder);
+      } catch {
+        toast("无法复核 Chrome 文件夹内容，已取消删除以保护其中的书签。", true);
+        return;
+      }
+    }
+
     if (!confirm(confirmMsg)) {
       if (focusOrigin?.isConnected) focusOrigin.focus({ preventScroll: true });
       return;
     }
-    try {
-      if (EXTENSION_MODE && node.folderId && canRenameChromeFolder(node.folderId)) {
-        await chrome.bookmarks.removeTree(String(node.folderId));
-        await syncChromeBookmarks();
+
+    if (chromeFolderId) {
+      try {
+        const [folder] = await chrome.bookmarks.getSubTree(chromeFolderId);
+        if (!folder || chromeBookmarkSubtreeSignature(folder) !== chromeFolderSnapshot) {
+          const conflictMessage = await refreshAfterChromeConflict();
+          toast(`文件夹内容在确认期间发生变化，删除已取消。${conflictMessage}`, true);
+          return;
+        }
+      } catch {
+        toast("无法复核最新 Chrome 文件夹内容，已取消删除。", true);
+        return;
       }
-      const hasLocal = state.items.some((item) => item.source !== "chrome"
-        && node.path.every((part, idx) => getNavigationPath(item)[idx] === part));
-      if (hasLocal) {
-        state.items = state.items.filter((item) => !(item.source !== "chrome"
-          && node.path.every((part, idx) => getNavigationPath(item)[idx] === part)));
-        persist();
+    }
+
+    const previousItems = state.items;
+    const hasLocal = state.items.some((item) => item.source !== "chrome"
+      && node.path.every((part, idx) => getNavigationPath(item)[idx] === part));
+    let localPersisted = false;
+    if (hasLocal) {
+      state.items = state.items.filter((item) => !(item.source !== "chrome"
+        && node.path.every((part, idx) => getNavigationPath(item)[idx] === part)));
+      if (!persist()) {
+        state.items = previousItems;
+        render();
+        toast("删除未完成：本地书签无法保存，Chrome 文件夹未更改。", true);
+        return;
+      }
+      localPersisted = true;
+    }
+
+    try {
+      let syncSucceeded = true;
+      if (chromeFolderId) {
+        await chrome.bookmarks.removeTree(chromeFolderId);
+        syncSucceeded = await syncChromeBookmarks() === true;
       }
       if (state.activeTab === node.id || state.activeTab.startsWith(`node:${JSON.stringify(node.path).slice(0, -1)}`)) {
         state.activeTab = "all";
       }
       render();
-      toast(`已删除文件夹“${node.label}”`);
+      toast(`已删除文件夹“${node.label}”${chromeSyncWarning(syncSucceeded)}`, syncSucceeded !== true);
     } catch (error) {
-      toast(`删除文件夹失败：${error?.message || "请重试"}`, true);
+      let rollbackNote = "";
+      if (localPersisted) {
+        state.items = previousItems;
+        if (!persist()) rollbackNote = "；本地书签也未能恢复到存储";
+        render();
+      }
+      toast(`删除文件夹失败：${error?.message || "请重试"}${rollbackNote}`, true);
     }
   }
 
@@ -5398,6 +5541,11 @@
         try { await chrome.bookmarks.remove(folderId); }
         catch { rollbackFailed = true; }
       }
+      let localRollbackFailed = false;
+      if (localPrevious.length) {
+        localRollbackFailed = !persist();
+        render({ refreshNavigation: false });
+      }
       if (items.some((item) => item.source === "chrome")) {
         chromeSyncSucceeded = await syncChromeBookmarks() === true;
       }
@@ -5405,13 +5553,9 @@
         refs.moveDialog.close();
         state.movingId = null;
         state.movingIds = [];
-        toast(`移动未完成，部分 Chrome 操作无法自动还原${chromeSyncWarning(chromeSyncSucceeded)}`, true);
+        toast(`移动未完成，部分 Chrome 操作无法自动还原${localRollbackFailed ? "；本地书签也未能恢复到存储" : ""}${chromeSyncWarning(chromeSyncSucceeded)}`, true);
       } else {
-        toast(`移动失败：${error.message}`, true);
-      }
-      if (localPrevious.length) {
-        persist();
-        render({ refreshNavigation: false });
+        toast(`移动失败：${error.message}${localRollbackFailed ? "；本地书签也未能恢复到存储" : ""}${chromeSyncWarning(chromeSyncSucceeded)}`, true);
       }
     }
   }
@@ -6371,21 +6515,37 @@
 
   function commandActions() {
     return [
-      { id: "search", label: "搜索书签", detail: "聚焦搜索框", run: () => { closeCommandPalette(); refs.search.focus(); refs.search.select(); } },
-      { id: "all", label: "全部书签", detail: "查看完整书签库", run: () => { state.activeTab = "all"; state.quickSourceFilter = "all"; state.query = ""; refs.search.value = ""; render(); } },
-      { id: "favorites", label: "收藏", detail: "查看收藏的网址", run: () => { state.activeTab = "favorites"; state.quickSourceFilter = "all"; state.query = ""; refs.search.value = ""; render(); } },
-      { id: "domain-cluster", label: "按站点域名筛选", detail: "快速浏览高频站点书签聚合 (输入 @)", run: () => showDomainClusterPicker() },
-      { id: "add", label: "添加书签", detail: "新建书签或文件夹", run: () => openDialog() },
-      { id: "theme", label: "切换黑白主题", detail: "在暗黑与白色模式间切换", run: toggleTheme },
-      { id: "view", label: "切换网格 / 列表", detail: `当前：${state.viewMode === "grid" ? "网格" : "列表"}`, run: () => { state.viewMode = state.viewMode === "grid" ? "list" : "grid"; saveViewPreferences(); render({ refreshNavigation: false }); } },
-      { id: "density", label: "切换卡片密度", detail: `当前：${state.densityMode === "compact" ? "紧凑" : "舒适"}`, run: () => { state.densityMode = state.densityMode === "compact" ? "comfortable" : "compact"; saveViewPreferences(); render({ refreshNavigation: false }); } },
-      { id: "select", label: state.selectionMode ? "退出选择模式" : "选择书签", detail: "批量移动、收藏或删除", run: () => setSelectionMode(!state.selectionMode) },
-      { id: "sidebar", label: state.sidebarCollapsed ? "展开侧栏" : "收起侧栏", detail: "调整目录导航宽度", run: () => { state.sidebarCollapsed = !state.sidebarCollapsed; saveViewPreferences(); render({ refreshNavigation: false }); } },
-      { id: "appearance", label: "外观设置", detail: "主题与背景偏好", run: () => refs.appearanceMenuItem.click() },
-      { id: "duplicates", label: "查找重复书签", detail: "扫描并整理重复网址", run: () => refs.duplicateButton.click() },
-      { id: "dead-links", label: "检查失效链接", detail: "检查网址是否仍可访问", run: () => refs.deadLinkButton.click() }
+      { id: "search", kind: "action", label: "搜索书签", detail: "聚焦搜索框", run: () => { closeCommandPalette(); refs.search.focus(); refs.search.select(); } },
+      { id: "all", kind: "action", label: "全部书签", detail: "查看完整书签库", run: () => { state.activeTab = "all"; state.quickSourceFilter = "all"; state.query = ""; refs.search.value = ""; render(); } },
+      { id: "favorites", kind: "action", label: "收藏", detail: "查看收藏的网址", run: () => { state.activeTab = "favorites"; state.quickSourceFilter = "all"; state.query = ""; refs.search.value = ""; render(); } },
+      { id: "domain-cluster", kind: "action", label: "按站点域名筛选", detail: "快速浏览高频站点书签聚合 (输入 @)", run: () => showDomainClusterPicker() },
+      { id: "add", kind: "action", label: "添加书签", detail: "新建书签或文件夹", run: () => openDialog() },
+      { id: "theme", kind: "action", label: "切换黑白主题", detail: "在暗黑与白色模式间切换", run: toggleTheme },
+      { id: "view", kind: "action", label: "切换网格 / 列表", detail: `当前：${state.viewMode === "grid" ? "网格" : "列表"}`, run: () => { state.viewMode = state.viewMode === "grid" ? "list" : "grid"; saveViewPreferences(); render({ refreshNavigation: false }); } },
+      { id: "density", kind: "action", label: "切换卡片密度", detail: `当前：${state.densityMode === "compact" ? "紧凑" : "舒适"}`, run: () => { state.densityMode = state.densityMode === "compact" ? "comfortable" : "compact"; saveViewPreferences(); render({ refreshNavigation: false }); } },
+      { id: "select", kind: "action", label: state.selectionMode ? "退出选择模式" : "选择书签", detail: "批量移动、收藏或删除", run: () => setSelectionMode(!state.selectionMode) },
+      { id: "sidebar", kind: "action", label: state.sidebarCollapsed ? "展开侧栏" : "收起侧栏", detail: "调整目录导航宽度", run: () => { state.sidebarCollapsed = !state.sidebarCollapsed; saveViewPreferences(); render({ refreshNavigation: false }); } },
+      { id: "appearance", kind: "action", label: "外观设置", detail: "主题与背景偏好", run: () => refs.appearanceMenuItem.click() },
+      { id: "duplicates", kind: "action", label: "查找重复书签", detail: "扫描并整理重复网址", run: () => refs.duplicateButton.click() },
+      { id: "dead-links", kind: "action", label: "检查失效链接", detail: "检查网址是否仍可访问", run: () => refs.deadLinkButton.click() }
     ];
   }
+
+  const COMMAND_ACTION_ICONS = {
+    search: `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4.5 4.5"/></svg>`,
+    all: `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M7 8h10M7 12h10M7 16h6"/></svg>`,
+    favorites: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`,
+    "domain-cluster": `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3.6 9h16.8M3.6 15h16.8M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg>`,
+    add: `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>`,
+    theme: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1Z"/></svg>`,
+    view: `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg>`,
+    density: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16M8 4v4M16 16v4"/></svg>`,
+    select: `<svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>`,
+    sidebar: `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 3v18M14 9l-3 3 3 3"/></svg>`,
+    appearance: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21a9 9 0 1 1 9-9c0 2.5-2 4-4 4h-2.5a2.5 2.5 0 0 0-1.8 4.2c.4.5.3 1.3-.3 1.6-.5.2-1.1.2-1.4.2Z"/><circle cx="7.5" cy="11.5" r="1.2"/><circle cx="10.5" cy="7.5" r="1.2"/><circle cx="15" cy="7.5" r="1.2"/></svg>`,
+    duplicates: `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="13" height="13" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>`,
+    "dead-links": `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10.5 8.5 5 5M15 9l-4 4M14 11a4.2 4.2 0 0 0 0-6L11 2a4.2 4.2 0 0 0-6 6l2 2m4 4 2 2a4.2 4.2 0 0 0 6-6l-2-2"/></svg>`
+  };
 
   function renderCommandPaletteOptions() {
     const rawInput = refs.commandInput.value.trim();
@@ -6394,7 +6554,7 @@
       ? rawInput.replace(/^@|^(?:site|domain):/i, "").trim().toLocaleLowerCase()
       : rawInput.toLocaleLowerCase();
 
-    const domainClusters = getDomainClusters(2);
+    const domainClusters = isDomainSearch || query ? getDomainClusters(2) : [];
     let domainOptions = [];
 
     if (isDomainSearch) {
@@ -6455,12 +6615,14 @@
       button.setAttribute("aria-selected", String(index === commandActiveIndex));
       button.dataset.commandIndex = String(index);
       const mark = document.createElement("span");
-      mark.className = "command-result-mark";
-      mark.innerHTML = option.kind === "bookmark"
-        ? `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5h10a1 1 0 0 1 1 1v14.2l-6-3.6-6 3.6V5.5a1 1 0 0 1 1-1Z"/></svg>`
-        : (option.kind === "domain"
-          ? `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3.6 9h16.8M3.6 15h16.8M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg>`
-          : `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h8"/></svg>`);
+      mark.className = `command-result-mark command-result-mark--${option.kind}${option.kind === "action" && option.id ? ` command-mark-${option.id}` : ""}`;
+      if (option.kind === "bookmark") {
+        mark.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5h10a1 1 0 0 1 1 1v14.2l-6-3.6-6 3.6V5.5a1 1 0 0 1 1-1Z"/></svg>`;
+      } else if (option.kind === "domain") {
+        mark.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3.6 9h16.8M3.6 15h16.8M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg>`;
+      } else {
+        mark.innerHTML = (option.id && COMMAND_ACTION_ICONS[option.id]) || `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h8"/></svg>`;
+      }
       const text = document.createElement("span");
       text.className = "command-result-copy";
       const label = document.createElement("strong");

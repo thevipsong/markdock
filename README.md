@@ -20,7 +20,7 @@
   <a href="manifest.json">
     <img src="https://img.shields.io/badge/Manifest-V3-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Manifest V3" />
   </a>
-  <img src="https://img.shields.io/badge/Version-2.4.1-8b5cf6?style=for-the-badge" alt="Version" />
+  <img src="https://img.shields.io/badge/Version-2.4.3-8b5cf6?style=for-the-badge" alt="Version" />
 </p>
 
 <p align="center">

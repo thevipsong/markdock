@@ -46,10 +46,10 @@
 
   const DEFAULTS = {
     theme: "dark",
-    wallpaperMode: "diffuse",
-    gradient: "slate",
-    textureMode: "none",
-    cardGlass: false
+    wallpaperMode: "gradient",
+    gradient: "aurora",
+    textureMode: "dots",
+    cardGlass: true
   };
 
   function themeFromSkin(skin) {
@@ -79,12 +79,11 @@
     else if (themeFromSkin(saved?.skin)) state.theme = themeFromSkin(saved.skin);
 
     if (modes.has(saved?.wallpaperMode)) state.wallpaperMode = saved.wallpaperMode;
-    else state.wallpaperMode = "diffuse";
 
     if (Object.hasOwn(gradients, saved?.gradient)) state.gradient = saved.gradient;
 
-    state.textureMode = saved?.textureMode === "dots" ? "dots" : "none";
-    state.cardGlass = saved?.cardGlass === true;
+    if (saved?.textureMode === "dots" || saved?.textureMode === "none") state.textureMode = saved.textureMode;
+    if (typeof saved?.cardGlass === "boolean") state.cardGlass = saved.cardGlass;
 
     try {
       const legacyRaw = localStorage.getItem(LEGACY_APPEARANCE_KEY);
@@ -338,10 +337,10 @@
       try {
         const saved = JSON.parse(event.newValue);
         if (themes.has(saved.theme)) state.theme = saved.theme;
-        state.wallpaperMode = modes.has(saved.wallpaperMode) ? saved.wallpaperMode : "diffuse";
-        if (Object.hasOwn(gradients, saved.gradient)) state.gradient = saved.gradient;
-        state.textureMode = saved.textureMode === "dots" ? "dots" : "none";
-        state.cardGlass = saved.cardGlass === true;
+        state.wallpaperMode = modes.has(saved.wallpaperMode) ? saved.wallpaperMode : DEFAULTS.wallpaperMode;
+        state.gradient = Object.hasOwn(gradients, saved.gradient) ? saved.gradient : DEFAULTS.gradient;
+        state.textureMode = saved.textureMode === "none" ? "none" : "dots";
+        state.cardGlass = saved.cardGlass === false ? false : DEFAULTS.cardGlass;
         updateAppearanceSaveStatus("");
         applyTheme(state.theme, false);
       } catch {

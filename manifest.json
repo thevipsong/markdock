@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
   "name": "MarkDock 书签坞",
-  "version": "2.4.1",
+  "version": "2.4.3",
   "minimum_chrome_version": "116",
-  "description": "管理浏览器书签，支持快速搜索、分类整理、导入导出、双主题外观和按需链接检查。",
+  "description": "把 Chrome 书签变成一搜即达的工作台：支持拼音/首字母搜索、文件夹整理、重复项清理与 HTML/JSON 备份。完整书签库不上传给开发者。",
   "permissions": [
     "bookmarks",
     "favicon",
