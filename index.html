@@ -8,8 +8,10 @@
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <script src="./theme-init.js"></script>
     <link rel="stylesheet" href="./styles.css" />
-    <script src="./app.js" defer></script>
     <script src="./appearance.js" defer></script>
+    <script src="./search-index.js" defer></script>
+    <link rel="stylesheet" href="./design-system.css" />
+    <script src="./app.js" defer></script>
   </head>
   <body>
     <a class="skip-link" href="#content">跳到书签内容</a>
@@ -54,7 +56,7 @@
           <div class="search-box" id="searchBox">
             <label class="search-input-label" for="searchInput">
               <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4.5 4.5"/></svg>
-              <input id="searchInput" type="search" placeholder="搜索书签 / 拼音首字母，按 Enter 网页搜索" aria-label="搜索书签或网页" autocomplete="off" />
+              <input id="searchInput" type="search" placeholder="搜索书签、tag:标签、is:later；回车网页搜索" aria-label="搜索书签或网页" autocomplete="off" />
             </label>
             <button class="search-clear" id="searchClearBtn" type="button" aria-label="清空搜索" hidden title="清空搜索">×</button>
             <div class="search-web-controls" id="searchWebControls" hidden>
@@ -146,7 +148,7 @@
               </button>
               <a class="actions-menu-link" href="./privacy.html" target="_blank" rel="noopener noreferrer">隐私政策</a>
               <div class="actions-menu-footer">
-                <span>MarkDock v2.4.3</span>
+                <span>MarkDock v2.5.0</span>
               </div>
             </div>
           </div>
@@ -166,6 +168,7 @@
       <div class="search-hint-bar" id="searchHintBar" hidden>
         <span id="searchResultNote"></span>
         <div class="search-hint-actions">
+          <button type="button" id="saveSearchButton" class="tag-button" hidden>保存为集合</button>
           <button type="button" id="hintWebSearchBtn" class="tag-button tag-button-accent">网页搜索</button>
           <button type="button" id="clearSearchScopeBtn" class="tag-button">清空搜索</button>
         </div>
@@ -263,6 +266,29 @@
           </label>
         </div>
 
+        <details class="bookmark-details-fields">
+          <summary>个人整理信息</summary>
+          <div class="bookmark-details-grid">
+            <label class="field">
+              <span>标签</span>
+              <input id="tagsField" name="tags" maxlength="240" placeholder="用逗号分隔，如：工作、阅读" autocomplete="off" />
+            </label>
+            <label class="field">
+              <span>阅读状态</span>
+              <select id="readStatusField" name="readStatus">
+                <option value="none">未标记</option>
+                <option value="unread">未读</option>
+                <option value="later">稍后阅读</option>
+                <option value="read">已读</option>
+              </select>
+            </label>
+            <label class="field bookmark-note-field">
+              <span>个人备注</span>
+              <textarea id="noteField" name="note" maxlength="1200" rows="3" placeholder="仅保存在本机，并随 JSON 备份导出"></textarea>
+            </label>
+          </div>
+        </details>
+
         <label class="favorite-check">
           <input id="favoriteField" name="favorite" type="checkbox" />
           <span>加入收藏</span>
@@ -278,6 +304,27 @@
           <button class="button button-primary" type="submit">保存书签</button>
         </div>
       </form>
+    </dialog>
+
+    <dialog id="importPreviewDialog" class="bookmark-dialog import-preview-dialog" aria-labelledby="importPreviewTitle">
+      <div class="dialog-heading">
+        <div><p class="eyebrow">导入预览</p><h2 id="importPreviewTitle">确认导入内容</h2></div>
+        <button class="icon-button" id="cancelImportPreviewButton" type="button" aria-label="取消导入">×</button>
+      </div>
+      <p class="import-preview-summary" id="importPreviewSummary"></p>
+      <div class="import-preview-details" id="importPreviewDetails"></div>
+      <fieldset class="import-strategy-options">
+        <legend>导入方式</legend>
+        <label><input type="radio" name="importStrategy" value="merge" checked /> 合并到现有本地书签</label>
+        <label><input type="radio" name="importStrategy" value="skip" /> 合并并跳过重复网址</label>
+        <label id="replaceImportOption" hidden><input type="radio" name="importStrategy" value="replace" /> 替换现有本地书签（先下载备份）</label>
+      </fieldset>
+      <p class="dialog-hint">Chrome 原生书签只会匹配和更新状态，不会被此导入替换。</p>
+      <div class="dialog-actions">
+        <span class="dialog-spacer"></span>
+        <button class="button button-quiet" id="cancelImportPreviewAction" type="button">取消</button>
+        <button class="button button-primary" id="confirmImportPreviewButton" type="button">继续导入</button>
+      </div>
     </dialog>
 
     <!-- Move Bookmark Dialog -->
@@ -364,7 +411,7 @@
         <div class="shortcut-row"><kbd>?</kbd><span>随时呼出此快捷键帮助</span></div>
       </div>
       <div class="dialog-actions">
-        <span class="dialog-version-tag">MarkDock v2.4.3</span>
+        <span class="dialog-version-tag">MarkDock v2.5.0</span>
         <span class="dialog-spacer"></span>
         <button class="button button-primary" type="button" data-close-dialog="shortcutsDialog">知道了</button>
       </div>
@@ -384,6 +431,22 @@
         <span class="command-footer-hints"><span><kbd>↑</kbd><kbd>↓</kbd> 导航</span><span><kbd>↵</kbd> 执行</span><span><kbd>@</kbd> 站点聚合</span></span>
         <span class="command-footer-shortcut">⌘K / Ctrl+K</span>
       </div>
+    </dialog>
+
+    <dialog id="saveSearchDialog" class="bookmark-dialog save-search-dialog" aria-labelledby="saveSearchTitle">
+      <form id="saveSearchForm">
+        <div class="dialog-heading">
+          <div><p class="eyebrow">快捷集合</p><h2 id="saveSearchTitle">保存当前搜索</h2></div>
+          <button class="icon-button" type="button" data-close-dialog="saveSearchDialog" aria-label="关闭">×</button>
+        </div>
+        <p class="saved-query-preview" id="savedQueryPreview"></p>
+        <label class="field"><span>集合名称</span><input id="saveSearchName" required maxlength="48" placeholder="例如：工作资料" autocomplete="off" /></label>
+        <div class="dialog-actions">
+          <span class="dialog-spacer"></span>
+          <button class="button button-quiet" type="button" data-close-dialog="saveSearchDialog">取消</button>
+          <button class="button button-primary" type="submit">保存集合</button>
+        </div>
+      </form>
     </dialog>
 
     <!-- Appearance Settings Dialog -->
@@ -467,6 +530,18 @@
         </button>
       </div>
 
+      <section class="launch-mode-panel" id="launchModePanel" aria-labelledby="launchModeTitle">
+        <div>
+          <h3 id="launchModeTitle">打开工作台</h3>
+          <p>选择点击扩展图标后的打开方式</p>
+        </div>
+        <label class="sr-only" for="launchModeSelect">工作台打开方式</label>
+        <select id="launchModeSelect">
+          <option value="tab">在新标签页打开</option>
+          <option value="side-panel">在浏览器侧边栏打开</option>
+        </select>
+      </section>
+
       <section class="appearance-wallpaper" aria-labelledby="appearanceWallpaperTitle">
         <div class="appearance-section-heading">
           <div>
@@ -505,7 +580,7 @@
         <div class="wallpaper-extra-effects" id="wallpaperExtraEffects">
           <div class="appearance-switch-row">
             <div class="switch-meta">
-              <strong>卡片显示密度 (Card Density)</strong>
+              <strong>卡片显示密度</strong>
               <small>调整书签网格间距与卡片呼吸感</small>
             </div>
             <div class="density-segmented" role="group" aria-label="卡片显示密度">
@@ -516,7 +591,7 @@
 
           <div class="appearance-switch-row">
             <div class="switch-meta">
-              <strong>微质感点阵 (Dot Grid)</strong>
+              <strong>微质感点阵</strong>
               <small>在背景表层叠加细腻科技网格微粒</small>
             </div>
             <button type="button" class="appearance-toggle-switch" id="toggleDotGrid" role="switch" aria-checked="false" aria-label="微质感点阵开关">
@@ -526,7 +601,7 @@
 
           <div class="appearance-switch-row">
             <div class="switch-meta">
-              <strong>卡片毛玻璃通透 (Frosted Glass)</strong>
+              <strong>卡片毛玻璃</strong>
               <small>书签卡片半透明磨砂毛玻璃浮雕质感</small>
             </div>
             <button type="button" class="appearance-toggle-switch" id="toggleCardGlass" role="switch" aria-checked="false" aria-label="卡片毛玻璃开关">

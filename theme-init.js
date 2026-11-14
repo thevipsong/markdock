@@ -86,8 +86,8 @@
   root.dataset.material = "frosted";
   root.dataset.wallpaperMode = wallpaperMode;
   delete root.dataset.imageSubMode;
-  root.dataset.textureMode = settings.textureMode === "none" ? "none" : "dots";
-  root.dataset.cardGlass = settings.cardGlass === false ? "false" : "true";
+  root.dataset.textureMode = settings.textureMode === "dots" ? "dots" : "none";
+  root.dataset.cardGlass = settings.cardGlass === true ? "true" : "false";
 
   const metaTheme = document.querySelector("meta[name='theme-color']");
   if (metaTheme) metaTheme.content = resolvedTheme === "dark" ? "#0b0c10" : "#f8fafc";

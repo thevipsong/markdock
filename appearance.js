@@ -48,8 +48,8 @@
     theme: "dark",
     wallpaperMode: "gradient",
     gradient: "aurora",
-    textureMode: "dots",
-    cardGlass: true
+    textureMode: "none",
+    cardGlass: false
   };
 
   function themeFromSkin(skin) {

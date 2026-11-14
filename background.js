@@ -3,6 +3,21 @@ const USER_DATA_CONSENT_KEY = "markdock-data-use-consent-v1";
 const MENU_SAVE_PAGE = "markdock-save-page";
 const MENU_SAVE_LINK = "markdock-save-link";
 const MENU_OPEN_GALLERY = "markdock-open-gallery";
+const LAUNCH_MODE_KEY = "markdock-launch-mode-v1";
+let preferredLaunchMode = "tab";
+let launchModeRevision = 0;
+
+const launchModeReady = chrome.storage?.local?.get(LAUNCH_MODE_KEY).then((values) => {
+  if (launchModeRevision === 0) {
+    preferredLaunchMode = values?.[LAUNCH_MODE_KEY] === "side-panel" ? "side-panel" : "tab";
+  }
+}).catch(() => {});
+
+chrome.storage?.onChanged?.addListener((changes, areaName) => {
+  if (areaName !== "local" || !changes[LAUNCH_MODE_KEY]) return;
+  launchModeRevision += 1;
+  preferredLaunchMode = changes[LAUNCH_MODE_KEY].newValue === "side-panel" ? "side-panel" : "tab";
+});
 
 async function hasUserDataConsent() {
   try {
@@ -103,7 +118,7 @@ function flashBadge(text, color = "#76549f") {
 
 chrome.contextMenus?.onClicked.addListener(async (info, tab) => {
   if (info.menuItemId === MENU_OPEN_GALLERY) {
-    await triggerOpenGallery(tab);
+    await openPreferredGallery(tab);
     return;
   }
   if (!(await hasUserDataConsent())) {
@@ -154,7 +169,23 @@ function triggerOpenGallery(clickedTab) {
   return opening;
 }
 
-chrome.action.onClicked.addListener((clickedTab) => triggerOpenGallery(clickedTab));
+async function openPreferredGallery(clickedTab) {
+  await launchModeReady;
+  if (preferredLaunchMode === "side-panel"
+    && !clickedTab?.incognito
+    && Number.isInteger(clickedTab?.windowId)
+    && chrome.sidePanel?.open) {
+    try {
+      await chrome.sidePanel.open({ windowId: clickedTab.windowId });
+      return;
+    } catch (error) {
+      console.warn("无法打开 MarkDock 侧边栏，改为新标签页", error);
+    }
+  }
+  await triggerOpenGallery(clickedTab);
+}
+
+chrome.action.onClicked.addListener((clickedTab) => openPreferredGallery(clickedTab));
 
 async function openGallery(incognito, preferredWindowId) {
   const targetUrl = chrome.runtime.getURL("index.html");

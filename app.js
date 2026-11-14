@@ -10,6 +10,9 @@
   const SOURCE_FILTER_KEY = "qidian-source-filter-v1";
   const NAV_TREE_KEY = "qidian-expanded-navigation-v1";
   const SEARCH_ENGINE_KEY = "qidian-search-engine-v1";
+  const SAVED_SEARCHES_KEY = "markdock-saved-searches-v1";
+  const LAUNCH_MODE_KEY = "markdock-launch-mode-v1";
+  const READ_STATUS_LABELS = { none: "", unread: "未读", later: "稍后阅读", read: "已读" };
   const SEARCH_ENGINES = {
     google: { name: "Google", label: "Google 搜索", home: "https://www.google.com", url: "https://www.google.com/search?q=" },
     bing: { name: "Bing 必应", label: "Bing 搜索", home: "https://www.bing.com", url: "https://www.bing.com/search?q=" },
@@ -66,6 +69,8 @@
   const queuedHighResolutionLookups = [];
   let highResolutionIconGeneration = 0;
   const EXTENSION_MODE = location.protocol === "chrome-extension:";
+  const IS_SIDE_PANEL = EXTENSION_MODE && new URLSearchParams(location.search).get("panel") === "1";
+  if (IS_SIDE_PANEL) document.documentElement.dataset.launchContext = "side-panel";
   function hasUserDataConsent() {
     if (!EXTENSION_MODE) return true;
     try { return localStorage.getItem(USER_DATA_CONSENT_KEY) === "accepted"; }
@@ -117,6 +122,91 @@
     }
   }
 
+  function normalizeTags(value) {
+    const source = Array.isArray(value) ? value : String(value || "").split(/[，,]/);
+    return [...new Set(source.map((tag) => String(tag).trim().slice(0, 24)).filter(Boolean))].slice(0, 8);
+  }
+
+  function sanitizeBookmarkMetadata(value) {
+    const metadata = value && typeof value === "object" ? value : {};
+    const readStatus = Object.hasOwn(READ_STATUS_LABELS, metadata.readStatus) ? metadata.readStatus : "none";
+    const lastOpenedAt = Number(metadata.lastOpenedAt);
+    return {
+      tags: normalizeTags(metadata.tags),
+      note: String(metadata.note || "").slice(0, 1200),
+      readStatus,
+      lastOpenedAt: Number.isFinite(lastOpenedAt) && lastOpenedAt > 0 ? lastOpenedAt : 0
+    };
+  }
+
+  function readSavedSearches() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(SAVED_SEARCHES_KEY) || "[]");
+      if (!Array.isArray(raw)) return [];
+      return raw.slice(0, 24).filter((entry) => entry && typeof entry.id === "string"
+        && typeof entry.name === "string" && typeof entry.query === "string")
+        .map((entry) => ({ id: entry.id.slice(0, 80), name: entry.name.trim().slice(0, 48), query: entry.query.trim().slice(0, 160) }))
+        .filter((entry) => entry.name && entry.query);
+    } catch { return []; }
+  }
+
+  function saveSavedSearches(entries) {
+    try {
+      localStorage.setItem(SAVED_SEARCHES_KEY, JSON.stringify(entries.slice(0, 24)));
+      return true;
+    } catch { return false; }
+  }
+
+  function openSaveSearchDialog() {
+    const query = refs.search.value.trim();
+    if (!query || !refs.saveSearchDialog) return;
+    refs.savedQueryPreview.textContent = query;
+    refs.saveSearchName.value = query.slice(0, 48);
+    refs.saveSearchDialog.showModal();
+    refs.saveSearchName.focus();
+    refs.saveSearchName.select();
+  }
+
+  function removeSavedSearch(searchId) {
+    const removed = savedSearches.find((entry) => entry.id === searchId);
+    if (!removed) return;
+    savedSearches = savedSearches.filter((entry) => entry.id !== searchId);
+    if (!saveSavedSearches(savedSearches)) {
+      savedSearches.unshift(removed);
+      toast("快捷集合没有保存；请检查浏览器存储空间。", true);
+      return;
+    }
+    if (state.activeTab === "saved-search:" + searchId) {
+      state.activeTab = "all";
+      state.activeSubFolder = "";
+      state.query = "";
+      state.limit = PAGE_SIZE;
+      refs.search.value = "";
+      refs.searchClear.hidden = true;
+    }
+    render();
+    toast("已删除快捷集合");
+  }
+
+  function saveCurrentSearch(name) {
+    const query = refs.search.value.trim();
+    const cleanName = String(name || "").trim().slice(0, 48);
+    if (!query || !cleanName) return false;
+    if (savedSearches.length >= 24) {
+      toast("最多保存 24 个快捷集合；请先删除不再使用的集合。", true);
+      return false;
+    }
+    savedSearches.push({ id: id(), name: cleanName, query: query.slice(0, 160) });
+    if (!saveSavedSearches(savedSearches)) {
+      savedSearches.pop();
+      toast("快捷集合没有保存；请检查浏览器存储空间。", true);
+      return false;
+    }
+    renderTabs();
+    toast("已保存快捷集合“" + cleanName + "”");
+    return true;
+  }
+
   const refs = {
     tabs: $("#tabs"), subTabsWrap: $("#subTabsWrap"), subTabs: $("#subTabs"),
     content: $("#content"), contentAnnouncement: $("#contentAnnouncement"), count: $("#countLine"), footerCount: $("#footerCount"),
@@ -156,7 +246,16 @@
     selectionMoveButton: $("#selectionMoveButton"), selectionFavoriteButton: $("#selectionFavoriteButton"), selectionFavoriteLabel: $("#selectionFavoriteLabel"),
     selectionDeleteButton: $("#selectionDeleteButton"), selectionExitButton: $("#selectionExitButton"),
     commandDialog: $("#commandDialog"), commandInput: $("#commandInput"), commandResults: $("#commandResults"),
-    closeCommandButton: $("#closeCommandButton"), toastMessage: $("#toastMessage"), toastAction: $("#toastAction")
+    closeCommandButton: $("#closeCommandButton"), toastMessage: $("#toastMessage"), toastAction: $("#toastAction"),
+    saveSearchButton: $("#saveSearchButton"), launchModeSelect: $("#launchModeSelect"),
+    launchModePanel: $("#launchModePanel"),
+    tags: $("#tagsField"), note: $("#noteField"), readStatus: $("#readStatusField"),
+    saveSearchDialog: $("#saveSearchDialog"), saveSearchForm: $("#saveSearchForm"), saveSearchName: $("#saveSearchName"),
+    savedQueryPreview: $("#savedQueryPreview"),
+    importPreviewDialog: $("#importPreviewDialog"), importPreviewSummary: $("#importPreviewSummary"),
+    importPreviewDetails: $("#importPreviewDetails"), replaceImportOption: $("#replaceImportOption"),
+    cancelImportPreviewButton: $("#cancelImportPreviewButton"), cancelImportPreviewAction: $("#cancelImportPreviewAction"),
+    confirmImportPreviewButton: $("#confirmImportPreviewButton")
   };
 
   // Group headings are sticky below the floating titlebar. Measure the actual
@@ -210,6 +309,9 @@
   const saved = loadState();
   const chromeFavorites = new Set(saved?.chromeFavorites || []);
   const chromeIconOverrides = new Map(saved?.chromeIconOverrides || []);
+  const bookmarkMetadata = new Map(saved?.bookmarkMetadata || []);
+  const bookmarkSearchIndex = globalThis.MarkDockSearch?.createIndex?.() || null;
+  let savedSearches = hasUserDataConsent() ? readSavedSearches() : [];
   const savedViewMode = readPreference(VIEW_KEY, "grid");
   const savedSortMode = readPreference(SORT_KEY, "default");
   const savedDensityMode = readPreference(DENSITY_KEY, "comfortable");
@@ -246,7 +348,7 @@
     renamingSection: null, // { path, renameChrome, renameLocal, chromeFolderId }
     viewMode: savedViewMode === "list" ? "list" : "grid",
     densityMode: savedDensityMode === "compact" ? "compact" : "comfortable",
-    sidebarCollapsed: savedSidebarCollapsed,
+    sidebarCollapsed: IS_SIDE_PANEL || savedSidebarCollapsed,
     searchEngine: Object.prototype.hasOwnProperty.call(SEARCH_ENGINES, savedSearchEngine) ? savedSearchEngine : "google",
     quickSourceFilter: "all",
     selectionMode: false,
@@ -262,6 +364,7 @@
 
   let toastTimer;
   let toastActionHandler = null;
+  let queuedToastAction = null;
   let lastBulkDelete = null;
   let commandOptions = [];
   let commandActiveIndex = 0;
@@ -329,7 +432,11 @@
       return {
         items,
         chromeFavorites: Array.isArray(parsed.chromeFavorites) ? parsed.chromeFavorites.filter((value) => typeof value === "string") : [],
-        chromeIconOverrides: sanitizeChromeIconOverrides(parsed.chromeIconOverrides)
+        chromeIconOverrides: sanitizeChromeIconOverrides(parsed.chromeIconOverrides),
+        bookmarkMetadata: Array.isArray(parsed.bookmarkMetadata)
+          ? parsed.bookmarkMetadata.filter((entry) => Array.isArray(entry) && typeof entry[0] === "string")
+            .slice(0, 20000).map(([key, value]) => [key, sanitizeBookmarkMetadata(value)])
+          : []
       };
     } catch { return null; }
   }
@@ -361,8 +468,34 @@
       source: value.source === "chrome" ? "chrome" : "local",
       chromeId: value.chromeId == null || value.chromeId === "" ? undefined : String(value.chromeId),
       parentId: value.parentId == null || value.parentId === "" ? undefined : String(value.parentId),
-      dateAdded
+      dateAdded,
+      ...sanitizeBookmarkMetadata(value)
     };
+  }
+
+  function bookmarkMetadataKey(item) {
+    return item?.source === "chrome" ? `chrome:${String(item.chromeId || item.id)}` : `local:${String(item?.id || "")}`;
+  }
+
+  function metadataFor(item) {
+    const stored = bookmarkMetadata.get(bookmarkMetadataKey(item));
+    if (item?.source === "chrome") return sanitizeBookmarkMetadata(stored || {});
+    return sanitizeBookmarkMetadata(stored ? { ...item, ...stored } : item);
+  }
+
+  function recentActivityAt(item) {
+    return Math.max(Number(item?.dateAdded) || 0, metadataFor(item).lastOpenedAt || 0);
+  }
+
+  function setBookmarkMetadata(item, value) {
+    if (!item) return;
+    const metadata = sanitizeBookmarkMetadata(value);
+    Object.assign(item, metadata);
+    if (item.source === "chrome") {
+      const empty = !metadata.tags.length && !metadata.note && metadata.readStatus === "none" && !metadata.lastOpenedAt;
+      if (empty) bookmarkMetadata.delete(bookmarkMetadataKey(item));
+      else bookmarkMetadata.set(bookmarkMetadataKey(item), metadata);
+    }
   }
 
   function persist() {
@@ -372,7 +505,8 @@
       version: 2,
       items,
       chromeFavorites: [...chromeFavorites],
-      chromeIconOverrides: iconOverrides
+      chromeIconOverrides: iconOverrides,
+      bookmarkMetadata: [...bookmarkMetadata]
     });
     const applySavedItems = (save) => {
       let localIndex = 0;
@@ -1738,9 +1872,11 @@
     if (persistenceNotice) message += `；${persistenceNotice}`;
     clearTimeout(toastTimer);
     refs.toastMessage.textContent = message;
-    toastActionHandler = typeof action?.onActivate === "function" ? action.onActivate : null;
+    const resolvedAction = typeof action?.onActivate === "function" ? action : queuedToastAction;
+    queuedToastAction = null;
+    toastActionHandler = typeof resolvedAction?.onActivate === "function" ? resolvedAction.onActivate : null;
     refs.toastAction.hidden = !toastActionHandler;
-    refs.toastAction.textContent = toastActionHandler ? String(action.label || "撤销") : "";
+    refs.toastAction.textContent = toastActionHandler ? String(resolvedAction.label || "撤销") : "";
     refs.toast.classList.toggle("error", isError);
     refs.toast.classList.add("show");
     toastTimer = setTimeout(() => {
@@ -2005,10 +2141,14 @@
     const shouldRestoreFocus = refs.tabs.contains(document.activeElement);
     state.activeTab = id;
     state.activeSubFolder = "";
-    state.query = "";
+    const savedSearch = id.startsWith("saved-search:")
+      ? savedSearches.find((entry) => entry.id === id.slice("saved-search:".length))
+      : null;
+    state.query = savedSearch?.query || "";
     state.limit = PAGE_SIZE;
-    refs.search.value = "";
-    refs.searchClear.hidden = true;
+    refs.search.value = state.query;
+    refs.searchClear.hidden = !state.query;
+    if (refs.saveSearchButton) refs.saveSearchButton.hidden = !state.query;
     if (node) {
       for (let current = node; current; current = current.parent) {
         state.collapsedNavNodes.delete(current.id);
@@ -2031,14 +2171,18 @@
     button.setAttribute("aria-label", `${label}，${count} 个书签`);
     if (state.activeTab === id) button.setAttribute("aria-current", "page");
 
-    if (kind === "all" || kind === "favorites") {
+    if (["all", "favorites", "recent", "reading"].includes(kind)) {
       const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
       icon.setAttribute("class", "tab-icon");
       icon.setAttribute("viewBox", "0 0 24 24");
       icon.setAttribute("aria-hidden", "true");
-      icon.innerHTML = kind === "all"
-        ? `<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>`
-        : `<path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>`;
+      const icons = {
+        all: `<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>`,
+        favorites: `<path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>`,
+        recent: `<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>`,
+        reading: `<path d="M5 4.5A2.5 2.5 0 0 1 7.5 2H20v18H7.5A2.5 2.5 0 0 0 5 22z"/><path d="M5 4.5v15A2.5 2.5 0 0 1 7.5 17H20"/>`
+      };
+      icon.innerHTML = icons[kind];
       button.append(icon);
     }
 
@@ -2095,6 +2239,45 @@
     topPinned.append(makeTopTab("all", "全部", state.items.length, "all"));
     const favoriteCount = state.items.filter((item) => item.favorite).length;
     topPinned.append(makeTopTab("favorites", "收藏", favoriteCount, "favorites"));
+    const recentCount = state.items.filter((item) => recentActivityAt(item) >= Date.now() - 30 * 24 * 60 * 60 * 1000).length;
+    const readingCount = state.items.filter((item) => metadataFor(item).readStatus === "later").length;
+    topPinned.append(makeTopTab("recent", "最近", recentCount, "recent"));
+    topPinned.append(makeTopTab("reading", "稍后阅读", readingCount, "reading"));
+    if (savedSearches.length) {
+      const savedDivider = document.createElement("div");
+      savedDivider.className = "nav-section-label";
+      savedDivider.textContent = "快捷集合";
+      topPinned.append(savedDivider);
+      const savedList = document.createElement("div");
+      savedList.className = "saved-search-list";
+      for (const entry of savedSearches) {
+      const row = document.createElement("div");
+      row.className = "saved-search-row";
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "tab saved-search-tab";
+      button.dataset.navigationId = "saved-search:" + entry.id;
+      button.title = entry.query;
+      button.setAttribute("aria-label", "快捷集合：" + entry.name);
+      if (state.activeTab === button.dataset.navigationId) button.setAttribute("aria-current", "page");
+      button.innerHTML = '<svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4M8 11h6"/></svg>';
+      const label = document.createElement("span");
+      label.className = "tab-label";
+      label.textContent = entry.name;
+      button.append(label);
+      button.addEventListener("click", () => selectNavigationTab(button.dataset.navigationId));
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "saved-search-remove";
+      remove.setAttribute("aria-label", "删除快捷集合：" + entry.name);
+      remove.title = "删除快捷集合";
+      remove.textContent = "×";
+      remove.addEventListener("click", () => removeSavedSearch(entry.id));
+      row.append(button, remove);
+        savedList.append(row);
+      }
+      topPinned.append(savedList);
+    }
     refs.tabs.append(topPinned);
 
     if (!tree.length) return;
@@ -2282,9 +2465,23 @@
     if (!items.length || !Array.isArray(destinationPath) || !destinationPath.length) return;
 
     const originalItems = state.items;
+    const previousView = {
+      activeTab: state.activeTab,
+      activeSubFolder: state.activeSubFolder,
+      query: state.query,
+      limit: state.limit,
+      search: refs.search.value,
+      searchClearHidden: refs.searchClear.hidden
+    };
     const localSnapshots = items
       .filter((item) => item.source !== "chrome")
-      .map((item) => ({ item, path: [...(item.path || [])], category: item.category, group: item.group }));
+      .map((item) => ({
+        item,
+        path: [...(item.path || [])],
+        category: item.category,
+        group: item.group,
+        signature: moveContentSignature(item)
+      }));
     const createdFolderIds = [];
     const movedChrome = [];
     let targetChromeFolderId = null;
@@ -2383,10 +2580,40 @@
       } else {
         render();
       }
+      const undoSnapshot = {
+        local: beforeItem ? [] : localSnapshots.map((previous) => {
+          const currentItem = state.items.find((item) => item.id === previous.item.id);
+          return currentItem && JSON.stringify(previous.path) !== JSON.stringify(currentItem.path || []) ? {
+            id: currentItem.id,
+            path: [...previous.path],
+            category: previous.category,
+            group: previous.group,
+            afterPath: [...(currentItem.path || [])],
+            afterCategory: currentItem.category,
+            afterGroup: currentItem.group,
+            signature: previous.signature
+          } : null;
+        }).filter(Boolean),
+        chrome: beforeItem ? [] : movedChrome.map((previous) => {
+          const currentItem = state.items.find((item) => item.source === "chrome"
+            && String(item.chromeId) === String(previous.item.chromeId));
+          return {
+            chromeId: String(previous.item.chromeId),
+            parentId: String(previous.parentId || "1"),
+            index: previous.index,
+            targetParentId: String(previous.targetParentId),
+            signature: moveContentSignature(currentItem || previous.item)
+          };
+        }),
+        createdFolderIds: beforeItem ? [] : [...createdFolderIds],
+        previousView
+      };
+      const canUndoMove = undoSnapshot.local.length || undoSnapshot.chrome.length;
       toast(beforeItem
         ? `已调整书签顺序并归入“${destinationPath.at(-1)}”${chromeSyncWarning(syncSucceeded)}`
         : `已将 ${items.length} 个书签移至“${destinationPath.join(" › ")}”${chromeSyncWarning(syncSucceeded)}`,
-      syncSucceeded !== true);
+      syncSucceeded !== true,
+      canUndoMove ? { label: "撤销", onActivate: () => undoBookmarkMove(undoSnapshot) } : null);
     } catch (error) {
       for (const snapshot of localSnapshots) {
         snapshot.item.path = snapshot.path;
@@ -2446,11 +2673,15 @@
     const needsDomainLookup = domainQueries.some(Boolean);
     const compactQuery = rawQuery.replace(/\s+/g, "").toUpperCase();
     const selectedPath = selectedNavigationPath();
+    const recentCutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
 
     let items = state.items.filter((item) => {
       if (tokens.length) return true;
       if (state.activeTab === "all") return true;
       if (state.activeTab === "favorites") return item.favorite;
+      if (state.activeTab === "recent") return recentActivityAt(item) >= recentCutoff;
+      if (state.activeTab === "reading") return metadataFor(item).readStatus === "later";
+      if (state.activeTab.startsWith("saved-search:")) return true;
       if (selectedPath) {
         const itemPath = getNavigationPath(item);
         return selectedPath.every((part, index) => itemPath[index] === part);
@@ -2460,33 +2691,35 @@
     });
 
     if (tokens.length) {
-      items = items.filter((item) => {
-        const titleLower = item.title.toLocaleLowerCase();
-        const urlLower = searchableUrl(item.url);
-        const categoryLower = item.category.toLocaleLowerCase();
-        const groupLower = item.group.toLocaleLowerCase();
-        const pathValue = getNavigationPath(item).join(" ");
-        const pathLower = pathValue.toLocaleLowerCase();
-        const itemHost = needsDomainLookup ? hostOf(item.url).toLocaleLowerCase() : "";
-        return tokens.every((token, index) => {
-          const domainPart = domainQueries[index];
-          if (domainPart) {
-            return itemHost.includes(domainPart) || urlLower.includes(domainPart);
-          }
-          return titleLower.includes(token)
-            || urlLower.includes(token)
-            || categoryLower.includes(token)
-            || groupLower.includes(token)
-            || pathLower.includes(token)
-            || pinyinInitialMatches(item.title, token)
-            || pinyinInitialMatches(pathValue, token);
-        })
-        || (compactQuery && (pinyinInitialMatches(item.title, compactQuery)
-          || pinyinInitialMatches(pathValue, compactQuery)));
-      });
+      if (bookmarkSearchIndex) {
+        items = items.filter((item) => bookmarkSearchIndex.matches(
+          item, tokens, domainQueries, compactQuery, metadataFor(item), pinyinInitialMatches
+        ));
+        bookmarkSearchIndex.prune(state.items);
+      } else {
+        items = items.filter((item) => {
+          const titleLower = item.title.toLocaleLowerCase();
+          const urlLower = searchableUrl(item.url);
+          const categoryLower = item.category.toLocaleLowerCase();
+          const groupLower = item.group.toLocaleLowerCase();
+          const pathValue = getNavigationPath(item).join(" ");
+          const pathLower = pathValue.toLocaleLowerCase();
+          const itemHost = needsDomainLookup ? hostOf(item.url).toLocaleLowerCase() : "";
+          return tokens.every((token, index) => {
+            const domainPart = domainQueries[index];
+            if (domainPart) return itemHost.includes(domainPart) || urlLower.includes(domainPart);
+            return titleLower.includes(token) || urlLower.includes(token) || categoryLower.includes(token)
+              || groupLower.includes(token) || pathLower.includes(token)
+              || pinyinInitialMatches(item.title, token) || pinyinInitialMatches(pathValue, token);
+          }) || Boolean(compactQuery && (pinyinInitialMatches(item.title, compactQuery)
+            || pinyinInitialMatches(pathValue, compactQuery)));
+        });
+      }
     }
 
-    if (state.sortMode === "name") {
+    if (state.activeTab === "recent") {
+      items = [...items].sort((a, b) => recentActivityAt(b) - recentActivityAt(a));
+    } else if (state.sortMode === "name") {
       items = [...items].sort((a, b) => pinyinCollator.compare(a.title, b.title));
     } else if (state.sortMode === "recent") {
       items = [...items].sort((a, b) => (b.dateAdded || 0) - (a.dateAdded || 0));
@@ -2592,7 +2825,8 @@
       title: item.title,
       url: item.url,
       favorite: chromeFavorites.has(String(item.chromeId)),
-      iconOverride: chromeIconOverrides.get(String(item.chromeId)) || ""
+      iconOverride: chromeIconOverrides.get(String(item.chromeId)) || "",
+      metadata: metadataFor(item)
     };
   }
 
@@ -2635,6 +2869,9 @@
         }
         if (entry.favorite) chromeFavorites.add(created.id);
         if (entry.iconOverride) chromeIconOverrides.set(String(created.id), entry.iconOverride);
+        if (entry.metadata) setBookmarkMetadata({
+          id: "chrome-" + created.id, chromeId: String(created.id), source: "chrome"
+        }, entry.metadata);
         if (!persist()) {
           favoriteSaveWarning = true;
           if (entry.favorite) chromeFavorites.delete(created.id);
@@ -2698,6 +2935,7 @@
         await chrome.bookmarks.remove(item.chromeId);
         chromeFavorites.delete(item.chromeId);
         chromeIconOverrides.delete(String(item.chromeId));
+        bookmarkMetadata.delete(bookmarkMetadataKey(item));
       } catch (error) {
         snapshot.chrome = snapshot.chrome.filter((entry) => entry.chromeId !== String(item.chromeId));
         failed.push({ title: item.title, message: error?.message || "删除失败" });
@@ -2791,6 +3029,12 @@
     } else if (state.activeTab === "favorites") {
       populateHeadingWithEmoji(title, "收藏");
       caption.textContent = `${count} 个常用网址`;
+    } else if (state.activeTab === "recent") {
+      populateHeadingWithEmoji(title, "最近活动");
+      caption.textContent = "最近 30 天打开或新增 · " + count + " 个书签";
+    } else if (state.activeTab === "reading") {
+      populateHeadingWithEmoji(title, "稍后阅读");
+      caption.textContent = count + " 个待读书签";
     } else if (path?.length) {
       populateHeadingWithEmoji(title, path.at(-1));
       const hasChildFolders = Boolean(navigationNodeAtPath(path)?.children.length);
@@ -3085,6 +3329,7 @@
     if (refs.searchShortcutKbd) {
       refs.searchShortcutKbd.hidden = Boolean(rawQuery);
     }
+    if (refs.saveSearchButton) refs.saveSearchButton.hidden = !rawQuery;
     if (refs.searchWebControls) {
       refs.searchWebControls.hidden = !rawQuery;
     }
@@ -3257,9 +3502,19 @@
     link.className = "bookmark-link";
     link.draggable = false;
     link.addEventListener("click", (event) => {
-      if (!state.selectionMode) return;
-      event.preventDefault();
-      toggleBookmarkSelection(item.id);
+      if (state.selectionMode) {
+        event.preventDefault();
+        toggleBookmarkSelection(item.id);
+        return;
+      }
+      const metadata = metadataFor(item);
+      const previousOpenedAt = metadata.lastOpenedAt;
+      metadata.lastOpenedAt = Date.now();
+      setBookmarkMetadata(item, metadata);
+      if (!persist()) {
+        metadata.lastOpenedAt = previousOpenedAt;
+        setBookmarkMetadata(item, metadata);
+      }
     });
     const openableUrl = safeUrl(item.url);
     if (openableUrl) {
@@ -3469,6 +3724,35 @@
     }
 
     textWrap.append(domainLine);
+    const metadata = metadataFor(item);
+    if (metadata.tags.length || metadata.readStatus !== "none") {
+      const metaLine = document.createElement("span");
+      metaLine.className = "bookmark-meta-line";
+      if (metadata.readStatus !== "none") {
+        const status = document.createElement("span");
+        status.className = "bookmark-status-chip bookmark-status-" + metadata.readStatus;
+        status.textContent = READ_STATUS_LABELS[metadata.readStatus];
+        metaLine.append(status);
+      }
+      for (const tag of metadata.tags.slice(0, 3)) {
+        const chip = document.createElement("span");
+        chip.className = "bookmark-tag-chip";
+        chip.textContent = tag;
+        metaLine.append(chip);
+      }
+      if (metadata.tags.length > 3) {
+        const extra = document.createElement("span");
+        extra.className = "bookmark-tag-extra";
+        extra.textContent = "+" + (metadata.tags.length - 3);
+        metaLine.append(extra);
+      }
+      textWrap.append(metaLine);
+    } else if (metadata.note) {
+      const noteMark = document.createElement("span");
+      noteMark.className = "bookmark-note-indicator";
+      noteMark.textContent = "有备注";
+      textWrap.append(noteMark);
+    }
     link.append(faviconWrap, textWrap);
 
     const actions = document.createElement("span");
@@ -3633,6 +3917,18 @@
       });
       actionRow.append(button, clearBtn);
       wrap.append(symbol, heading, paragraph, actionRow);
+    } else if (state.activeTab === "recent") {
+      heading.textContent = "还没有最近活动";
+      paragraph.textContent = "新保存或打开的书签会自动出现在这里。";
+      button.textContent = "浏览全部书签";
+      button.addEventListener("click", () => { state.activeTab = "all"; render(); });
+      wrap.append(symbol, heading, paragraph, button);
+    } else if (state.activeTab === "reading") {
+      heading.textContent = "稍后阅读列表是空的";
+      paragraph.textContent = "编辑书签并将阅读状态设为“稍后阅读”，就能在这里集中查看。";
+      button.textContent = "浏览全部书签";
+      button.addEventListener("click", () => { state.activeTab = "all"; render(); });
+      wrap.append(symbol, heading, paragraph, button);
     } else if (state.activeTab === "favorites") {
       heading.textContent = "还没有收藏任何书签";
       paragraph.textContent = "点击任意书签右侧的星标按钮，常用网站就会收纳到这里。";
@@ -3778,6 +4074,10 @@
       || (state.activeTab.startsWith("cat:") ? state.activeTab.slice(4) : "");
     refs.group.value = item?.group || selectedFolderPath?.slice(1).join(" / ") || "";
     refs.favorite.checked = Boolean(item?.favorite);
+    const metadata = metadataFor(item || {});
+    refs.tags.value = metadata.tags.join("，");
+    refs.note.value = metadata.note;
+    refs.readStatus.value = metadata.readStatus;
     refs.delete.hidden = !item || state.mode === "demo";
 
     const isChrome = item?.source === "chrome";
@@ -3824,6 +4124,38 @@
     refs.title.focus();
   }
 
+  function currentFormMetadata(item = state.items.find((entry) => entry.id === state.editingId)) {
+    return sanitizeBookmarkMetadata({
+      ...metadataFor(item || {}),
+      tags: refs.tags.value,
+      note: refs.note.value,
+      readStatus: refs.readStatus.value
+    });
+  }
+
+  async function initializeLaunchMode() {
+    if (!EXTENSION_MODE || !globalThis.chrome?.sidePanel || !refs.launchModeSelect) {
+      if (refs.launchModePanel) refs.launchModePanel.hidden = true;
+      return;
+    }
+    try {
+      const values = await chrome.storage.local.get(LAUNCH_MODE_KEY);
+      refs.launchModeSelect.value = values?.[LAUNCH_MODE_KEY] === "side-panel" ? "side-panel" : "tab";
+    } catch {
+      refs.launchModeSelect.value = "tab";
+    }
+    refs.launchModeSelect.addEventListener("change", async () => {
+      const mode = refs.launchModeSelect.value === "side-panel" ? "side-panel" : "tab";
+      try {
+        await chrome.storage.local.set({ [LAUNCH_MODE_KEY]: mode });
+        toast(mode === "side-panel" ? "点击扩展图标将在侧边栏打开工作台" : "点击扩展图标将在新标签页打开工作台");
+      } catch {
+        refs.launchModeSelect.value = "tab";
+        toast("打开方式没有保存，请重试。", true);
+      }
+    });
+  }
+
   function updateSaveDestToggle() {
     const isChrome = state.targetDest === "chrome";
     refs.destToggle.querySelectorAll(".segment-btn").forEach((btn) => {
@@ -3851,7 +4183,8 @@
       category: item.category,
       group: item.group,
       path: [...(item.path || [])],
-      favorite: Boolean(item.favorite)
+      favorite: Boolean(item.favorite),
+      metadata: metadataFor(item)
     });
   }
 
@@ -3968,12 +4301,15 @@
           return;
         }
         const previousFavorite = chromeFavorites.has(existing.chromeId);
+        const previousMetadata = metadataFor(existing);
         if (refs.favorite.checked) chromeFavorites.add(existing.chromeId);
         else chromeFavorites.delete(existing.chromeId);
+        setBookmarkMetadata(existing, currentFormMetadata(existing));
         const favoriteSaved = persist();
         if (!favoriteSaved) {
           if (previousFavorite) chromeFavorites.add(existing.chromeId);
           else chromeFavorites.delete(existing.chromeId);
+          setBookmarkMetadata(existing, previousMetadata);
         }
         const syncSucceeded = await syncChromeBookmarks();
         if (moveError) {
@@ -4012,12 +4348,14 @@
           title: title.slice(0, 512),
           url
         });
+        const createdItem = { id: "chrome-" + created.id, chromeId: String(created.id), source: "chrome" };
+        setBookmarkMetadata(createdItem, currentFormMetadata(null));
         let favoriteSaved = true;
         if (refs.favorite.checked) {
           chromeFavorites.add(created.id);
-          favoriteSaved = persist();
-          if (!favoriteSaved) chromeFavorites.delete(created.id);
         }
+        favoriteSaved = persist();
+        if (!favoriteSaved && refs.favorite.checked) chromeFavorites.delete(created.id);
         closeDialog();
         const syncSucceeded = await syncChromeBookmarks();
         const syncNote = chromeSyncWarning(syncSucceeded);
@@ -4065,6 +4403,7 @@
       group: group.slice(0, 100),
       path: nextPath,
       favorite: refs.favorite.checked,
+      ...currentFormMetadata(existing),
       icon: existing?.url === url ? existing.icon : "",
       source: "local",
       dateAdded: existing?.dateAdded || Date.now()
@@ -4127,9 +4466,15 @@
           }
           return false;
         }
+        const restoreRecord = chromeRestoreRecord(item);
         await chrome.bookmarks.remove(item.chromeId);
+        queuedToastAction = {
+          label: "撤销",
+          onActivate: () => undoBulkDelete({ local: [], chrome: [restoreRecord] })
+        };
         chromeFavorites.delete(item.chromeId);
         chromeIconOverrides.delete(String(item.chromeId));
+        bookmarkMetadata.delete(bookmarkMetadataKey(item));
         const favoritesSaved = persist();
         const syncSucceeded = await syncChromeBookmarks();
         closeDialog();
@@ -4145,6 +4490,10 @@
     }
 
     const previousItems = state.items;
+    const restoreRecord = {
+      index: state.items.findIndex((entry) => entry.id === item.id),
+      item: { ...item, path: [...(item.path || [])] }
+    };
     state.items = state.items.filter((entry) => entry.id !== item.id);
     if (!persist()) {
       state.items = previousItems;
@@ -4153,6 +4502,10 @@
     }
     render();
     closeDialog();
+    queuedToastAction = {
+      label: "撤销",
+      onActivate: () => undoBulkDelete({ local: [restoreRecord], chrome: [] })
+    };
     toast("书签已删除");
     return true;
   }
@@ -4182,6 +4535,59 @@
     }
     refs.file.value = "";
     refs.file.click();
+  }
+
+  function showImportPreview(summary, counts) {
+    refs.importPreviewSummary.textContent = summary;
+    refs.importPreviewDetails.replaceChildren();
+    const labels = [
+      ["可新增书签", counts.incoming],
+      ["匹配到现有 Chrome 书签", counts.matched],
+      ["当前本地书签", counts.localCount],
+      ["与本地书签网址重复", counts.localDuplicates],
+      ["文件内重复网址", counts.fileDuplicates],
+      ["无效记录", counts.invalid]
+    ];
+    for (const [label, value] of labels) {
+      const row = document.createElement("div");
+      row.className = "import-preview-stat";
+      const name = document.createElement("span");
+      name.textContent = label;
+      const count = document.createElement("strong");
+      count.textContent = String(value);
+      row.append(name, count);
+      refs.importPreviewDetails.append(row);
+    }
+    refs.replaceImportOption.hidden = counts.localCount === 0;
+    const mergeOption = refs.importPreviewDialog.querySelector('input[name="importStrategy"][value="merge"]');
+    if (mergeOption) mergeOption.checked = true;
+
+    return new Promise((resolve) => {
+      let settled = false;
+      const finish = (strategy) => {
+        if (settled) return;
+        settled = true;
+        refs.importPreviewDialog.removeEventListener("cancel", onCancel);
+        refs.cancelImportPreviewButton.removeEventListener("click", onCancel);
+        refs.cancelImportPreviewAction.removeEventListener("click", onCancel);
+        refs.confirmImportPreviewButton.removeEventListener("click", onConfirm);
+        if (refs.importPreviewDialog.open) refs.importPreviewDialog.close();
+        resolve(strategy);
+      };
+      const onCancel = (event) => {
+        event?.preventDefault?.();
+        finish(null);
+      };
+      const onConfirm = () => {
+        const selected = refs.importPreviewDialog.querySelector('input[name="importStrategy"]:checked');
+        finish(selected?.value || "merge");
+      };
+      refs.importPreviewDialog.addEventListener("cancel", onCancel);
+      refs.cancelImportPreviewButton.addEventListener("click", onCancel);
+      refs.cancelImportPreviewAction.addEventListener("click", onCancel);
+      refs.confirmImportPreviewButton.addEventListener("click", onConfirm);
+      refs.importPreviewDialog.showModal();
+    });
   }
 
   function normalizeImportedChromeRoot(item, rawItem) {
@@ -4337,6 +4743,7 @@
       let items = [];
       const matchedChromeIds = new Set();
       const importedChromeFavoriteValues = new Map();
+      const importedChromeMetadataValues = new Map();
       const importedChromeIconValues = new Map();
       const chromeFavoriteChanges = new Map();
       let chromeIdentityConflicts = 0;
@@ -4384,6 +4791,7 @@
             if (typeof rawItem.favorite === "boolean") {
               importedChromeFavoriteValues.set(sanitized.chromeId, rawItem.favorite);
             }
+            importedChromeMetadataValues.set(sanitized.chromeId, sanitizeBookmarkMetadata(rawItem));
             if (validIcon(sanitized.icon)) {
               if (sanitized.icon.length > remainingImportIconChars) {
                 skippedImportIcons++;
@@ -4442,13 +4850,60 @@
 
       if (!items.length && !matchedChromeIds.size) throw new Error("文件中没有找到可导入或匹配的书签");
 
+      const existingLocalItems = state.mode === "personal"
+        ? state.items.filter((item) => item.source !== "chrome")
+        : [];
+      const existingLocalUrls = new Set(existingLocalItems.map((item) => normalizeUrlForDedup(item.url)));
+      const incomingUrls = new Set();
+      let fileDuplicateCount = 0;
+      let localDuplicateCount = 0;
+      for (const item of items) {
+        const normalized = normalizeUrlForDedup(item.url);
+        if (incomingUrls.has(normalized)) fileDuplicateCount++;
+        else incomingUrls.add(normalized);
+        if (existingLocalUrls.has(normalized)) localDuplicateCount++;
+      }
+      const strategy = await showImportPreview(
+        file.name + " · 预览导入后再应用更改",
+        {
+          incoming: items.length,
+          matched: matchedChromeIds.size,
+          localDuplicates: localDuplicateCount,
+          fileDuplicates: fileDuplicateCount,
+          invalid: skippedImportItems,
+          localCount: existingLocalItems.length
+        }
+      );
+      if (!strategy) {
+        toast("已取消导入，现有书签未更改。");
+        return;
+      }
+      const replaceLocal = strategy === "replace";
+      let skippedDuplicateCount = 0;
+      if (strategy === "skip") {
+        const seenUrls = new Set(existingLocalUrls);
+        items = items.filter((item) => {
+          const normalized = normalizeUrlForDedup(item.url);
+          if (seenUrls.has(normalized)) {
+            skippedDuplicateCount++;
+            return false;
+          }
+          seenUrls.add(normalized);
+          return true;
+        });
+        if (!items.length && !matchedChromeIds.size) {
+          toast("所有导入网址都已存在；没有书签需要添加。");
+          return;
+        }
+      }
+
       const localCount = state.items.filter((item) => item.source !== "chrome").length;
       const matchNote = matchedChromeIds.size
         ? `，并匹配到 ${matchedChromeIds.size} 个现有 Chrome 书签`
         : "";
 
       const importWarnings = [];
-      if (state.mode === "personal" && localCount) {
+      if (state.mode === "personal" && localCount && replaceLocal) {
         importWarnings.push(`将当前 ${localCount} 个本地书签替换为文件中的 ${items.length} 个本地书签${matchNote}。MarkDock 会先下载当前全部书签的 JSON 备份，并要求你确认文件已保存。`);
       }
       if (skippedImportItems) {
@@ -4457,7 +4912,7 @@
       if (importWarnings.length
         && !confirm(`${importWarnings.join("\n\n")}\n\n继续导入吗？`)) return;
 
-      if (state.mode === "personal" && localCount) {
+      if (state.mode === "personal" && localCount && replaceLocal) {
         const backupItems = [...chromeItems, ...state.items.filter((item) => item.source !== "chrome")];
         const backupStarted = exportJson(backupItems, { silent: true });
         if (!backupStarted) throw new Error("自动备份下载未能启动，已取消导入");
@@ -4493,6 +4948,7 @@
       const previousItems = state.items.map((item) => ({ ...item, path: [...(item.path || [])] }));
       const previousFavorites = new Set(chromeFavorites);
       const previousChromeIcons = new Map(chromeIconOverrides);
+      const previousBookmarkMetadata = new Map(bookmarkMetadata);
       const previousView = {
         activeTab: state.activeTab,
         activeSubFolder: state.activeSubFolder,
@@ -4513,8 +4969,12 @@
         const currentItem = chromeById.get(chromeId);
         if (currentItem) currentItem.icon = override.icon;
       }
+      for (const [chromeId, metadata] of importedChromeMetadataValues) {
+        const currentItem = chromeById.get(chromeId);
+        if (currentItem) setBookmarkMetadata(currentItem, metadata);
+      }
       state.mode = "personal";
-      state.items = [...chromeItems, ...items];
+      state.items = [...chromeItems, ...(replaceLocal ? [] : existingLocalItems), ...items];
       state.activeTab = "all";
       state.activeSubFolder = "";
       state.query = "";
@@ -4529,6 +4989,8 @@
         previousFavorites.forEach((chromeId) => chromeFavorites.add(chromeId));
         chromeIconOverrides.clear();
         previousChromeIcons.forEach((override, chromeId) => chromeIconOverrides.set(chromeId, override));
+        bookmarkMetadata.clear();
+        previousBookmarkMetadata.forEach((metadata, key) => bookmarkMetadata.set(key, metadata));
         state.activeTab = previousView.activeTab;
         state.activeSubFolder = previousView.activeSubFolder;
         state.query = previousView.query;
@@ -4543,6 +5005,7 @@
         : `已成功导入 ${items.length} 个书签`;
       const importNotes = [
         chromeIdentityConflicts ? `${chromeIdentityConflicts} 个 Chrome 书签 ID、网址或文件夹路径无法匹配，已作为本地书签保留` : "",
+        skippedDuplicateCount ? `${skippedDuplicateCount} 个重复网址已跳过` : "",
         skippedImportItems ? `${skippedImportItems} 条无效记录已跳过` : "",
         skippedImportIcons ? `${skippedImportIcons} 个内嵌图标缓存超出存储预算，已跳过；书签条目仍已导入` : ""
       ].filter(Boolean);
@@ -4672,7 +5135,8 @@
         exportedAt: new Date().toISOString(),
         chromeFavorites: [...chromeFavorites],
         chromeIconOverrides: [...chromeIconOverrides],
-        items
+        bookmarkMetadata: [...bookmarkMetadata],
+        items: items.map((item) => ({ ...item, ...metadataFor(item) }))
       };
       const data = JSON.stringify(payload, null, 2);
       return download("MarkDock书签.json", new Blob([data], { type: "application/json" }), { silent });
@@ -4757,6 +5221,7 @@
           url, category, group, path,
           favorite: chromeFavorites.has(chromeId),
           icon: chromeIconForBookmark(chromeId, url),
+          ...metadataFor({ id: `chrome-${chromeId}`, source: "chrome", chromeId }),
           parentId: String(node.parentId),
           index: Number.isInteger(node.index) ? node.index : fallbackIndex,
           dateAdded: node.dateAdded || 0,
@@ -5439,6 +5904,122 @@
     return withSubmitLock(event, "正在移动…", moveBookmarkOnce);
   }
 
+  function moveContentSignature(item) {
+    return JSON.stringify({
+      title: item?.title || "",
+      url: item?.url || "",
+      favorite: Boolean(item?.favorite),
+      metadata: metadataFor(item || {})
+    });
+  }
+
+  async function undoBookmarkMove(snapshot) {
+    if (!snapshot) return;
+    try {
+      if (snapshot.chrome.length && EXTENSION_MODE) {
+        if (await syncChromeBookmarks() !== true) throw new Error("无法读取最新 Chrome 书签");
+      }
+
+      const localToRestore = [];
+      for (const entry of snapshot.local) {
+        const item = state.items.find((candidate) => candidate.id === entry.id);
+        if (!item || item.source === "chrome" || moveContentSignature(item) !== entry.signature) {
+          throw new Error("本地书签已在其他页面中更改，无法安全撤销");
+        }
+        const atTarget = JSON.stringify(item.path || []) === JSON.stringify(entry.afterPath)
+          && item.category === entry.afterCategory && item.group === entry.afterGroup;
+        const atOrigin = JSON.stringify(item.path || []) === JSON.stringify(entry.path)
+          && item.category === entry.category && item.group === entry.group;
+        if (atTarget) localToRestore.push({ item, entry });
+        else if (!atOrigin) throw new Error("本地书签分组已发生变化，无法安全撤销");
+      }
+
+      const chromeToRestore = [];
+      for (const entry of snapshot.chrome) {
+        const item = state.items.find((candidate) => candidate.source === "chrome"
+          && String(candidate.chromeId) === entry.chromeId);
+        if (!item || moveContentSignature(item) !== entry.signature) {
+          throw new Error("Chrome 书签已在其他位置或内容已更改，无法安全撤销");
+        }
+        const currentParentId = String(item.parentId || "");
+        const atTarget = currentParentId === entry.targetParentId;
+        const atOrigin = currentParentId === entry.parentId;
+        if (atTarget) {
+          if (!(await chromeBookmarkMatchesCurrent(item))) throw new Error("Chrome 书签状态已变化，无法安全撤销");
+          chromeToRestore.push({ item, entry });
+        } else if (!atOrigin) {
+          throw new Error("Chrome 书签分组已变化，无法安全撤销");
+        }
+      }
+
+      const movedBack = [];
+      const localChanges = [];
+      try {
+        for (const { item, entry } of [...chromeToRestore].sort((a, b) =>
+          a.entry.parentId.localeCompare(b.entry.parentId) || a.entry.index - b.entry.index)) {
+          await chrome.bookmarks.move(item.chromeId, {
+            parentId: entry.parentId,
+            ...(Number.isInteger(entry.index) ? { index: entry.index } : {})
+          });
+          movedBack.push({ entry, targetIndex: item.index });
+        }
+
+        for (const { item, entry } of localToRestore) {
+          localChanges.push({ item, afterPath: [...item.path], afterCategory: item.category, afterGroup: item.group });
+          item.path = [...entry.path];
+          item.category = entry.category;
+          item.group = entry.group;
+        }
+        if (localChanges.length && !persist()) throw new Error("本地存储空间不足，分组撤销未能保存");
+      } catch (error) {
+        for (const change of localChanges) {
+          change.item.path = change.afterPath;
+          change.item.category = change.afterCategory;
+          change.item.group = change.afterGroup;
+        }
+        if (localChanges.length) persist();
+        let rollbackFailed = false;
+        for (const moved of movedBack.reverse()) {
+          try {
+            await chrome.bookmarks.move(moved.entry.chromeId, {
+              parentId: moved.entry.targetParentId,
+              ...(Number.isInteger(moved.targetIndex) ? { index: moved.targetIndex } : {})
+            });
+          } catch { rollbackFailed = true; }
+        }
+        if (snapshot.chrome.length && EXTENSION_MODE) await syncChromeBookmarks();
+        if (rollbackFailed) throw new Error(`${error.message}；部分 Chrome 书签未能回到移动前位置`);
+        throw error;
+      }
+
+      let cleanupWarning = "";
+      if (EXTENSION_MODE) {
+        for (const folderId of [...snapshot.createdFolderIds].reverse()) {
+          try { await chrome.bookmarks.remove(String(folderId)); }
+          catch { cleanupWarning = "；原移动时创建的空文件夹未能全部清除"; }
+        }
+      }
+      let syncSucceeded = true;
+      if (snapshot.chrome.length && EXTENSION_MODE) syncSucceeded = await syncChromeBookmarks() === true;
+      if (snapshot.previousView) {
+        state.activeTab = snapshot.previousView.activeTab;
+        state.activeSubFolder = snapshot.previousView.activeSubFolder;
+        state.query = snapshot.previousView.query;
+        state.limit = snapshot.previousView.limit;
+        refs.search.value = snapshot.previousView.search;
+        refs.searchClear.hidden = snapshot.previousView.searchClearHidden;
+      }
+      render();
+      const restoredCount = localToRestore.length + chromeToRestore.length;
+      toast(`已撤销移动 ${restoredCount} 个书签${cleanupWarning}${chromeSyncWarning(syncSucceeded)}`, Boolean(cleanupWarning) || syncSucceeded !== true);
+    } catch (error) {
+      render();
+      toast(`撤销移动失败：${error.message}`, true, {
+        label: "重试撤销", onActivate: () => undoBookmarkMove(snapshot)
+      });
+    }
+  }
+
   async function moveBookmarkOnce(event) {
     event.preventDefault();
     const items = (state.movingIds.length ? state.movingIds : [state.movingId])
@@ -5449,6 +6030,14 @@
     const newName = refs.newGroup.value.trim();
     let createdFolderIds = [];
     const movedChrome = [];
+    const previousView = {
+      activeTab: state.activeTab,
+      activeSubFolder: state.activeSubFolder,
+      query: state.query,
+      limit: state.limit,
+      search: refs.search.value,
+      searchClearHidden: refs.searchClear.hidden
+    };
     const localPrevious = items.filter((item) => item.source !== "chrome").map((item) => ({
       item,
       path: [...item.path],
@@ -5496,7 +6085,12 @@
         for (const item of chromeItems) {
           if (targetChromeFolderId === item.parentId) continue;
           if (!(await chromeBookmarkMatchesCurrent(item))) throw new Error(await refreshAfterChromeConflict());
-          movedChrome.push({ item, parentId: item.parentId, index: item.index });
+          movedChrome.push({
+            item,
+            parentId: item.parentId,
+            index: item.index,
+            targetParentId: String(targetChromeFolderId)
+          });
           await chrome.bookmarks.move(item.chromeId, { parentId: targetChromeFolderId });
         }
       }
@@ -5517,7 +6111,38 @@
       dialogFocusReturns.delete(refs.moveDialog);
       refs.moveDialog.close();
       refs.content.querySelector(".bookmark-link")?.focus({ preventScroll: true });
-      toast(chromeSyncSucceeded ? `已移动 ${items.length} 个书签` : `书签已移动${chromeSyncWarning(false)}`, !chromeSyncSucceeded);
+      const undoSnapshot = {
+        local: localPrevious.map((previous) => {
+          const currentItem = state.items.find((item) => item.id === previous.item.id);
+          return currentItem ? {
+            id: currentItem.id,
+            path: [...previous.path],
+            category: previous.category,
+            group: previous.group,
+            afterPath: [...(currentItem.path || [])],
+            afterCategory: currentItem.category,
+            afterGroup: currentItem.group,
+            signature: moveContentSignature(currentItem)
+          } : null;
+        }).filter((entry) => entry && JSON.stringify(entry.path) !== JSON.stringify(entry.afterPath)),
+        chrome: movedChrome.map((previous) => {
+          const currentItem = state.items.find((item) => item.source === "chrome"
+            && String(item.chromeId) === String(previous.item.chromeId));
+          return {
+            chromeId: String(previous.item.chromeId),
+            parentId: String(previous.parentId || "1"),
+            index: previous.index,
+            targetParentId: String(previous.targetParentId),
+            signature: moveContentSignature(currentItem || previous.item)
+          };
+        }),
+        createdFolderIds: [...createdFolderIds],
+        previousView
+      };
+      const canUndoMove = undoSnapshot.local.length || undoSnapshot.chrome.length;
+      toast(chromeSyncSucceeded ? `已移动 ${items.length} 个书签` : `书签已移动${chromeSyncWarning(false)}`,
+        !chromeSyncSucceeded,
+        canUndoMove ? { label: "撤销", onActivate: () => undoBookmarkMove(undoSnapshot) } : null);
     } catch (error) {
       for (const previous of localPrevious) {
         Object.assign(previous.item, {
@@ -5586,6 +6211,89 @@
         unmodifiable: folder.unmodifiable
       } : null
     });
+  }
+
+  async function undoRenameSection(snapshot) {
+    if (!snapshot) return;
+    const localToRestore = [];
+    const chromeToRestore = [];
+    try {
+      if (snapshot.chrome && EXTENSION_MODE && await syncChromeBookmarks() !== true) {
+        throw new Error("无法读取最新 Chrome 文件夹状态");
+      }
+
+      for (const entry of snapshot.local) {
+        const item = state.items.find((candidate) => candidate.id === entry.id);
+        if (!item || item.source === "chrome" || moveContentSignature(item) !== entry.signature) {
+          throw new Error("文件夹中的本地书签已更改，无法安全撤销");
+        }
+        const atRenamedPath = JSON.stringify(item.path || []) === JSON.stringify(entry.afterPath)
+          && item.category === entry.afterCategory && item.group === entry.afterGroup;
+        const atOriginalPath = JSON.stringify(item.path || []) === JSON.stringify(entry.path)
+          && item.category === entry.category && item.group === entry.group;
+        if (atRenamedPath) localToRestore.push({ item, entry });
+        else if (!atOriginalPath) throw new Error("本地书签分组已再次变化，无法安全撤销");
+      }
+
+      if (snapshot.chrome && EXTENSION_MODE) {
+        const folder = chromeFolders.get(snapshot.chrome.id);
+        if (!folder) throw new Error("Chrome 文件夹已不存在，无法安全撤销");
+        if (folder.title === snapshot.chrome.afterTitle) {
+          if (!canRenameChromeFolder(snapshot.chrome.id)
+            || !(await chromeFolderMatchesCurrent(snapshot.chrome.id, {
+              title: snapshot.chrome.afterTitle,
+              parentId: snapshot.chrome.parentId,
+              unmodifiable: snapshot.chrome.unmodifiable
+            }))) throw new Error("Chrome 文件夹状态已变化，无法安全撤销");
+          chromeToRestore.push(snapshot.chrome);
+        } else if (folder.title !== snapshot.chrome.title) {
+          throw new Error("Chrome 文件夹名称已再次变化，无法安全撤销");
+        }
+      }
+
+      const localChanges = [];
+      const chromeChanged = [];
+      try {
+        for (const entry of chromeToRestore) {
+          await chrome.bookmarks.update(entry.id, { title: entry.title });
+          chromeChanged.push(entry);
+        }
+        for (const { item, entry } of localToRestore) {
+          localChanges.push({ item, afterPath: [...item.path], afterCategory: item.category, afterGroup: item.group });
+          item.path = [...entry.path];
+          item.category = entry.category;
+          item.group = entry.group;
+        }
+        if (localChanges.length && !persist()) throw new Error("本地存储空间不足，重命名撤销未能保存");
+      } catch (error) {
+        for (const change of localChanges) {
+          change.item.path = change.afterPath;
+          change.item.category = change.afterCategory;
+          change.item.group = change.afterGroup;
+        }
+        if (localChanges.length) persist();
+        for (const entry of chromeChanged.reverse()) {
+          try { await chrome.bookmarks.update(entry.id, { title: entry.afterTitle }); }
+          catch { /* The retry action rechecks current state before making changes. */ }
+        }
+        if (chromeChanged.length && EXTENSION_MODE) await syncChromeBookmarks();
+        throw error;
+      }
+
+      let syncSucceeded = true;
+      if (snapshot.chrome && EXTENSION_MODE) syncSucceeded = await syncChromeBookmarks() === true;
+      const currentActivePath = selectedNavigationPath();
+      if (snapshot.activePathAfter && JSON.stringify(currentActivePath) === JSON.stringify(snapshot.activePathAfter)) {
+        state.activeTab = navigationNodeAtPath(snapshot.activePathBefore)?.id || "all";
+      }
+      render();
+      toast(`已撤销分组重命名${chromeSyncWarning(syncSucceeded)}`, syncSucceeded !== true);
+    } catch (error) {
+      render();
+      toast(`撤销重命名失败：${error.message}`, true, {
+        label: "重试撤销", onActivate: () => undoRenameSection(snapshot)
+      });
+    }
   }
 
   function openRenameDialog(section) {
@@ -5767,12 +6475,44 @@
       if (current.restoreFolderFocus && renamedFolderNode) {
         focusRenamedNodeId = renamedFolderNode.id;
       }
+      const activePathAfterRename = selectionInsideRenamedFolder ? [...activePathBeforeRename] : null;
+      if (activePathAfterRename) activePathAfterRename[current.path.length - 1] = newName;
+      const undoSnapshot = {
+        local: (previousItems || []).filter((item) => item.source !== "chrome"
+          && current.path.every((part, index) => (item.path || [])[index] === part))
+          .map((before) => {
+            const after = state.items.find((item) => item.id === before.id);
+            if (!after || JSON.stringify(before.path || []) === JSON.stringify(after.path || [])) return null;
+            return {
+              id: after.id,
+              path: [...(before.path || [])],
+              category: before.category,
+              group: before.group,
+              afterPath: [...(after.path || [])],
+              afterCategory: after.category,
+              afterGroup: after.group,
+              signature: moveContentSignature(after)
+            };
+          }).filter(Boolean),
+        chrome: chromeRenamed && current.chromeFolderTitle !== newName ? {
+          id: String(current.chromeFolderId),
+          title: current.chromeFolderTitle,
+          afterTitle: newName,
+          parentId: String(current.chromeFolderParentId),
+          unmodifiable: current.chromeFolderUnmodifiable
+        } : null,
+        activePathBefore: selectionInsideRenamedFolder ? [...activePathBeforeRename] : null,
+        activePathAfter: activePathAfterRename
+      };
       refs.renameDialog.close();
       state.renamingSection = null;
       if (focusRenamedNodeId) {
         restoreNavigationFocus(focusRenamedNodeId, ".tab[data-navigation-id]");
       }
-      toast(`分组已重命名为“${newName}”${chromeSyncWarning(chromeSyncResult)}`, chromeSyncResult !== true);
+      const canUndoRename = undoSnapshot.local.length || undoSnapshot.chrome;
+      toast(`分组已重命名为“${newName}”${chromeRenamed ? chromeSyncWarning(chromeSyncResult) : ""}`,
+        chromeRenamed && chromeSyncResult !== true,
+        canUndoRename ? { label: "撤销", onActivate: () => undoRenameSection(undoSnapshot) } : null);
     } catch (error) {
       let localRollbackFailed = false;
       if (previousItems && localChanged) {
@@ -6852,13 +7592,20 @@
   });
   refs.search.addEventListener("input", () => {
     state.query = refs.search.value;
+    if (state.activeTab.startsWith("saved-search:")) state.activeTab = "all";
     const hasQuery = Boolean(state.query.trim());
     refs.searchBox?.classList.toggle("has-query", hasQuery);
     if (refs.searchShortcutKbd) refs.searchShortcutKbd.hidden = hasQuery;
     if (refs.searchWebControls) refs.searchWebControls.hidden = !hasQuery;
     refs.searchClear.hidden = !hasQuery;
+    refs.saveSearchButton.hidden = !hasQuery;
     state.limit = PAGE_SIZE;
     scheduleSearchRender();
+  });
+  refs.saveSearchButton?.addEventListener("click", openSaveSearchDialog);
+  refs.saveSearchForm?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    if (saveCurrentSearch(refs.saveSearchName.value)) refs.saveSearchDialog.close();
   });
   refs.search.addEventListener("keydown", (event) => {
     if (event.isComposing) return;
@@ -6910,7 +7657,9 @@
   refs.searchClear.addEventListener("click", () => {
     refs.search.value = "";
     state.query = "";
+    state.activeTab = "all";
     refs.searchClear.hidden = true;
+    if (refs.saveSearchButton) refs.saveSearchButton.hidden = true;
     if (refs.searchEngineMenu) {
       refs.searchEngineMenu.hidden = true;
       refs.searchEngineBtn?.setAttribute("aria-expanded", "false");
@@ -6921,7 +7670,9 @@
   refs.clearSearchScopeBtn.addEventListener("click", () => {
     refs.search.value = "";
     state.query = "";
+    state.activeTab = "all";
     refs.searchClear.hidden = true;
+    if (refs.saveSearchButton) refs.saveSearchButton.hidden = true;
     render({ refreshNavigation: false });
   });
 
@@ -7506,6 +8257,11 @@
   }
 
   window.addEventListener("storage", (event) => {
+    if (event.key === SAVED_SEARCHES_KEY) {
+      savedSearches = hasUserDataConsent() ? readSavedSearches() : [];
+      renderTabs();
+      return;
+    }
     if (event.key !== STORAGE_KEY && event.key !== null) return;
     const clearing = event.key === null || event.newValue === null;
     if (state.mode === "demo" && clearing) return;
@@ -7532,12 +8288,19 @@
       ? saved.chromeFavorites.filter((value) => typeof value === "string")
       : []);
     const nextChromeIcons = new Map(sanitizeChromeIconOverrides(saved.chromeIconOverrides));
+    const nextBookmarkMetadata = new Map(Array.isArray(saved.bookmarkMetadata)
+      ? saved.bookmarkMetadata.filter((entry) => Array.isArray(entry) && typeof entry[0] === "string")
+        .slice(0, 20000).map(([key, value]) => [key, sanitizeBookmarkMetadata(value)])
+      : []);
     chromeIconOverrides.clear();
     nextChromeIcons.forEach((override, chromeId) => chromeIconOverrides.set(chromeId, override));
+    bookmarkMetadata.clear();
+    nextBookmarkMetadata.forEach((metadata, key) => bookmarkMetadata.set(key, metadata));
 
     state.items = [
       ...chromeItems.map((item) => ({
         ...item,
+        ...metadataFor(item),
         favorite: nextFavorites.has(item.chromeId),
         icon: chromeIconForBookmark(item.chromeId, item.url)
       })),
@@ -7572,7 +8335,18 @@
   });
 
   // Initialization
+  const commandShortcutLabel = /Mac|iPhone|iPad/i.test(
+    `${navigator.platform || ""} ${navigator.userAgentData?.platform || ""}`
+  ) ? "⌘K" : "Ctrl+K";
+  const commandButton = $("#commandPaletteButton");
+  const commandShortcut = $("#commandPaletteButton kbd");
+  const commandFooterShortcut = $(".command-footer-shortcut");
+  if (commandShortcut) commandShortcut.textContent = commandShortcutLabel;
+  if (commandFooterShortcut) commandFooterShortcut.textContent = commandShortcutLabel;
+  commandButton?.setAttribute("aria-label", `打开快速操作面板 (${commandShortcutLabel})`);
+  if (commandButton) commandButton.title = `快速操作与全局检索 (${commandShortcutLabel})`;
   syncThemeButton();
+  void initializeLaunchMode();
   render();
   if (hasUserDataConsent()) void hydrateIconsFromIdb();
   if (EXTENSION_MODE) {
