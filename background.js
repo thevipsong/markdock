@@ -6,17 +6,32 @@ const MENU_OPEN_GALLERY = "markdock-open-gallery";
 const LAUNCH_MODE_KEY = "markdock-launch-mode-v1";
 let preferredLaunchMode = "tab";
 let launchModeRevision = 0;
+let panelBehaviorUpdates = Promise.resolve();
+
+function syncPanelBehavior(mode) {
+  if (!chrome.sidePanel?.setPanelBehavior) return Promise.resolve();
+  panelBehaviorUpdates = panelBehaviorUpdates
+    .catch(() => {})
+    .then(() => chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: mode === "side-panel" }))
+    .catch((error) => console.warn("同步 MarkDock 侧边栏打开方式失败", error));
+  return panelBehaviorUpdates;
+}
 
 const launchModeReady = chrome.storage?.local?.get(LAUNCH_MODE_KEY).then((values) => {
   if (launchModeRevision === 0) {
     preferredLaunchMode = values?.[LAUNCH_MODE_KEY] === "side-panel" ? "side-panel" : "tab";
   }
-}).catch(() => {});
+  return syncPanelBehavior(preferredLaunchMode);
+}).catch((error) => {
+  console.warn("读取 MarkDock 打开方式失败", error);
+  return syncPanelBehavior("tab");
+});
 
 chrome.storage?.onChanged?.addListener((changes, areaName) => {
   if (areaName !== "local" || !changes[LAUNCH_MODE_KEY]) return;
   launchModeRevision += 1;
   preferredLaunchMode = changes[LAUNCH_MODE_KEY].newValue === "side-panel" ? "side-panel" : "tab";
+  void syncPanelBehavior(preferredLaunchMode);
 });
 
 async function hasUserDataConsent() {
@@ -169,23 +184,26 @@ function triggerOpenGallery(clickedTab) {
   return opening;
 }
 
-async function openPreferredGallery(clickedTab) {
-  await launchModeReady;
+function openPreferredGallery(clickedTab) {
   if (preferredLaunchMode === "side-panel"
     && !clickedTab?.incognito
     && Number.isInteger(clickedTab?.windowId)
     && chrome.sidePanel?.open) {
-    try {
-      await chrome.sidePanel.open({ windowId: clickedTab.windowId });
-      return;
-    } catch (error) {
+    return chrome.sidePanel.open({ windowId: clickedTab.windowId }).catch((error) => {
       console.warn("无法打开 MarkDock 侧边栏，改为新标签页", error);
-    }
+      return triggerOpenGallery(clickedTab);
+    });
   }
-  await triggerOpenGallery(clickedTab);
+  return triggerOpenGallery(clickedTab);
 }
 
-chrome.action.onClicked.addListener((clickedTab) => openPreferredGallery(clickedTab));
+chrome.action.onClicked.addListener(async (clickedTab) => {
+  await launchModeReady;
+  // Chrome opens/toggles the side panel through setPanelBehavior. Do not call
+  // sidePanel.open() here: it can undo Chrome's toggle-close action.
+  if (preferredLaunchMode === "side-panel") return;
+  await triggerOpenGallery(clickedTab);
+});
 
 async function openGallery(incognito, preferredWindowId) {
   const targetUrl = chrome.runtime.getURL("index.html");

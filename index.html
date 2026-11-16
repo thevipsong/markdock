@@ -148,7 +148,7 @@
               </button>
               <a class="actions-menu-link" href="./privacy.html" target="_blank" rel="noopener noreferrer">隐私政策</a>
               <div class="actions-menu-footer">
-                <span>MarkDock v2.5.0</span>
+                <span>MarkDock v2.5.1</span>
               </div>
             </div>
           </div>
@@ -411,7 +411,7 @@
         <div class="shortcut-row"><kbd>?</kbd><span>随时呼出此快捷键帮助</span></div>
       </div>
       <div class="dialog-actions">
-        <span class="dialog-version-tag">MarkDock v2.5.0</span>
+        <span class="dialog-version-tag">MarkDock v2.5.1</span>
         <span class="dialog-spacer"></span>
         <button class="button button-primary" type="button" data-close-dialog="shortcutsDialog">知道了</button>
       </div>
@@ -531,15 +531,31 @@
       </div>
 
       <section class="launch-mode-panel" id="launchModePanel" aria-labelledby="launchModeTitle">
-        <div>
-          <h3 id="launchModeTitle">打开工作台</h3>
-          <p>选择点击扩展图标后的打开方式</p>
+        <div class="launch-mode-heading">
+          <span class="launch-mode-heading-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><rect x="3.5" y="4" width="17" height="12.5" rx="2.2"/><path d="M8 20h8M12 16.5V20"/></svg>
+          </span>
+          <span>
+            <h3 id="launchModeTitle">打开工作台</h3>
+            <p>选择点击工具栏图标后的打开方式</p>
+          </span>
         </div>
-        <label class="sr-only" for="launchModeSelect">工作台打开方式</label>
-        <select id="launchModeSelect">
-          <option value="tab">在新标签页打开</option>
-          <option value="side-panel">在浏览器侧边栏打开</option>
-        </select>
+        <div class="launch-mode-options" role="group" aria-label="工作台打开方式">
+          <button class="launch-mode-option" type="button" data-launch-mode="tab" aria-pressed="true">
+            <span class="launch-mode-option-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2.2"/><path d="M3.5 9h17M7 7h.01M10 7h.01"/></svg>
+            </span>
+            <span class="launch-mode-option-copy"><strong>新标签页</strong><small>完整空间，适合集中整理</small></span>
+            <span class="launch-mode-check" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="m3.5 8.2 2.8 2.7 6.2-6"/></svg></span>
+          </button>
+          <button class="launch-mode-option" type="button" data-launch-mode="side-panel" aria-pressed="false">
+            <span class="launch-mode-option-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><rect x="3.5" y="4" width="17" height="16" rx="2.2"/><path d="M14.5 4v16M17.5 7h1M17.5 10h1M17.5 13h1"/></svg>
+            </span>
+            <span class="launch-mode-option-copy"><strong>浏览器侧边栏</strong><small>与当前网页并排查看</small></span>
+            <span class="launch-mode-check" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="m3.5 8.2 2.8 2.7 6.2-6"/></svg></span>
+          </button>
+        </div>
       </section>
 
       <section class="appearance-wallpaper" aria-labelledby="appearanceWallpaperTitle">

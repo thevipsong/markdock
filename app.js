@@ -247,7 +247,7 @@
     selectionDeleteButton: $("#selectionDeleteButton"), selectionExitButton: $("#selectionExitButton"),
     commandDialog: $("#commandDialog"), commandInput: $("#commandInput"), commandResults: $("#commandResults"),
     closeCommandButton: $("#closeCommandButton"), toastMessage: $("#toastMessage"), toastAction: $("#toastAction"),
-    saveSearchButton: $("#saveSearchButton"), launchModeSelect: $("#launchModeSelect"),
+    saveSearchButton: $("#saveSearchButton"),
     launchModePanel: $("#launchModePanel"),
     tags: $("#tagsField"), note: $("#noteField"), readStatus: $("#readStatusField"),
     saveSearchDialog: $("#saveSearchDialog"), saveSearchForm: $("#saveSearchForm"), saveSearchName: $("#saveSearchName"),
@@ -4134,26 +4134,55 @@
   }
 
   async function initializeLaunchMode() {
-    if (!EXTENSION_MODE || !globalThis.chrome?.sidePanel || !refs.launchModeSelect) {
+    const launchModeButtons = refs.launchModePanel?.querySelectorAll("[data-launch-mode]");
+    if (!EXTENSION_MODE || !globalThis.chrome?.sidePanel?.setPanelBehavior || !launchModeButtons?.length) {
       if (refs.launchModePanel) refs.launchModePanel.hidden = true;
       return;
     }
+
+    let selectedMode = "tab";
+    const reflectLaunchMode = (mode) => {
+      launchModeButtons.forEach((button) => {
+        const isActive = button.dataset.launchMode === mode;
+        button.classList.toggle("is-active", isActive);
+        button.setAttribute("aria-pressed", String(isActive));
+      });
+    };
+
     try {
       const values = await chrome.storage.local.get(LAUNCH_MODE_KEY);
-      refs.launchModeSelect.value = values?.[LAUNCH_MODE_KEY] === "side-panel" ? "side-panel" : "tab";
+      selectedMode = values?.[LAUNCH_MODE_KEY] === "side-panel" ? "side-panel" : "tab";
     } catch {
-      refs.launchModeSelect.value = "tab";
+      selectedMode = "tab";
     }
-    refs.launchModeSelect.addEventListener("change", async () => {
-      const mode = refs.launchModeSelect.value === "side-panel" ? "side-panel" : "tab";
+
+    reflectLaunchMode(selectedMode);
+    try {
+      await chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: selectedMode === "side-panel" });
+    } catch (error) {
+      console.warn("同步 MarkDock 打开方式失败", error);
+    }
+
+    launchModeButtons.forEach((button) => button.addEventListener("click", async () => {
+      const mode = button.dataset.launchMode === "side-panel" ? "side-panel" : "tab";
+      if (mode === selectedMode) return;
+      launchModeButtons.forEach((option) => { option.disabled = true; });
       try {
+        await chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: mode === "side-panel" });
         await chrome.storage.local.set({ [LAUNCH_MODE_KEY]: mode });
-        toast(mode === "side-panel" ? "点击扩展图标将在侧边栏打开工作台" : "点击扩展图标将在新标签页打开工作台");
-      } catch {
-        refs.launchModeSelect.value = "tab";
+        selectedMode = mode;
+        reflectLaunchMode(selectedMode);
+        toast(mode === "side-panel" ? "已设置为侧边栏打开，点击工具栏图标即可使用" : "已设置为在新标签页打开");
+      } catch (error) {
+        try {
+          await chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: selectedMode === "side-panel" });
+        } catch { /* keep the last saved preference if Chrome is unavailable */ }
+        reflectLaunchMode(selectedMode);
         toast("打开方式没有保存，请重试。", true);
+      } finally {
+        launchModeButtons.forEach((option) => { option.disabled = false; });
       }
-    });
+    }));
   }
 
   function updateSaveDestToggle() {

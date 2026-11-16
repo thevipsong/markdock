@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "MarkDock 书签坞",
-  "version": "2.5.0",
+  "version": "2.5.1",
   "minimum_chrome_version": "116",
   "description": "把 Chrome 书签变成一搜即达的工作台：支持拼音搜索、标签与阅读清单、浏览器侧边栏、查重及 HTML/JSON 备份。书签数据保存在本机。",
   "permissions": [
