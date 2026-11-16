@@ -70,7 +70,11 @@
   let highResolutionIconGeneration = 0;
   const EXTENSION_MODE = location.protocol === "chrome-extension:";
   const IS_SIDE_PANEL = EXTENSION_MODE && new URLSearchParams(location.search).get("panel") === "1";
-  if (IS_SIDE_PANEL) document.documentElement.dataset.launchContext = "side-panel";
+  if (IS_SIDE_PANEL) {
+    document.documentElement.dataset.launchContext = "side-panel";
+    const sidePanelSearch = document.getElementById("searchInput");
+    if (sidePanelSearch) sidePanelSearch.placeholder = "搜索书签、tag:标签、is:later";
+  }
   function hasUserDataConsent() {
     if (!EXTENSION_MODE) return true;
     try { return localStorage.getItem(USER_DATA_CONSENT_KEY) === "accepted"; }
@@ -2423,6 +2427,24 @@
     };
     for (const node of tree) treeWrap.append(renderNode(node, 0, null));
     refs.tabs.append(treeWrap);
+    if (document.documentElement.dataset.launchContext === "side-panel") {
+      requestAnimationFrame(() => {
+        const edge = 8;
+        for (const flyout of treeWrap.querySelectorAll(":scope > .nav-node > .nav-node-children:not([hidden])")) {
+          const anchor = flyout.parentElement.querySelector(":scope > .nav-node-row")?.getBoundingClientRect();
+          const bounds = flyout.getBoundingClientRect();
+          if (!anchor) continue;
+          const leftOffset = bounds.left - (Number.parseFloat(flyout.style.left) || 0);
+          const topOffset = bounds.top - (Number.parseFloat(flyout.style.top) || 0);
+          const viewportWidth = document.documentElement.clientWidth || window.innerWidth;
+          const viewportHeight = document.documentElement.clientHeight || window.innerHeight;
+          const left = Math.max(edge, Math.min(anchor.left - leftOffset, viewportWidth - edge - bounds.width - leftOffset));
+          const top = Math.max(edge, Math.min(anchor.bottom + 4 - topOffset, viewportHeight - edge - bounds.height - topOffset));
+          flyout.style.left = `${left}px`;
+          flyout.style.top = `${top}px`;
+        }
+      });
+    }
   }
 
   let activeDraggedBookmarkIds = [];
@@ -3271,7 +3293,9 @@
       loadMoreObserver = null;
     }
 
-    document.documentElement.dataset.sidebarCollapsed = String(state.sidebarCollapsed);
+    // The side panel has its own compact horizontal navigation. Keep the
+    // saved desktop collapse preference unchanged, but render it expanded here.
+    document.documentElement.dataset.sidebarCollapsed = String(IS_SIDE_PANEL ? false : state.sidebarCollapsed);
     if (refs.sidebarCollapseButton) {
       const label = state.sidebarCollapsed ? "展开侧栏" : "收起侧栏";
       refs.sidebarCollapseButton.setAttribute("aria-label", label);
